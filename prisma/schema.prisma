@@ -43,14 +43,17 @@ model Child {
   name              String
   parent            User         @relation(fields: [parentId], references: [id])
   parentId          String
-  payments     Payment[]
-  fees         Fee[]
   status            ChildStatus  @default(ABSENT)
   qrCode            String       @unique
+  registrationType RegistrationType?
   attendanceRecords Attendance[]
   notifications     Notification[]
+  payments          Payment[]    
+  fees             Fee[]        // Add this line for Fee relation
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+
+  @@index([parentId])
 }
 
 model Attendance {
@@ -92,32 +95,39 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id            String    @id @default(uuid())
-  childId       String
-  child         Child     @relation(fields: [childId], references: [id])
-  amount        Float
-  description   String?
-  paymentDate   DateTime  @default(now())
-  receiptNumber String?   @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  childId          String
+  child            Child     @relation(fields: [childId], references: [id])
+  amount           Float
+  paymentDate      DateTime
+  registrationType String?
+  receiptNumber    String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([childId])
 }
 
 model Fee {
-  id          String       @id @default(uuid())
-  childId     String
-  child       Child       @relation(fields: [childId], references: [id])
-  totalAmount Float
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  installments Installment[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id               String           @id @default(uuid())
+  childId          String
+  child            Child            @relation(fields: [childId], references: [id])
+  totalAmount      Float
+  registrationType RegistrationType // Using the enum type
+  description      String?
+  startDate        DateTime
+  endDate          DateTime
+  installments     Installment[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   @@index([childId])
+}
+
+enum RegistrationType {
+  DAILY
+  MONTHLY
+  YEARLY
 }
 
 model Installment {
@@ -139,4 +149,12 @@ enum InstallmentStatus {
   PAID
   PENDING
   OVERDUE
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  amount      Float
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

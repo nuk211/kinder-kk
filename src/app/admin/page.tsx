@@ -8,9 +8,10 @@ import ChildrenList from '@/components/ChildrenList';
 import ParentList from '@/components/ParentList';
 import AttendanceManagement from '@/components/AttendanceManagement';
 import { NotificationMenu } from '@/components/NotificationMenu';
-import { Globe, LayoutDashboard, Users, Calendar, UserSquare2, UserMinus, CreditCard } from 'lucide-react';
+import { Globe, LayoutDashboard, Users, Calendar, UserSquare2, UserMinus, CreditCard, TrendingUp, Trash2 } from 'lucide-react';
 import PickupManagement from '@/components/PickupManagement';
 import PaymentManagement from '@/components/PaymentManagement';
+import ProfitManagement from '@/components/ProfitManagement';
 interface Notification {
   id: string;
   message: string;
@@ -67,6 +68,7 @@ const translations = {
     pickup: "Pickup Management",
     payments: "Payments & Accounting",
     totalAmount: "Total Amount",
+    profit: "Profit",
     paidAmount: "Paid Amount",
     remainingAmount: "Remaining Amount",
     installments: "Installments",
@@ -114,6 +116,7 @@ const translations = {
     generateQR: "إنشاء رمز QR",
     scanQR: "مسح رمز QR",
     attendanceHistory: "سجل الحضور",
+    profit: "الأرباح",
     viewAll: "عرض الكل",
     status: "الحالة",
     time: "الوقت",
@@ -346,6 +349,7 @@ export default function AdminPage() {
                 <UserMinus className="h-5 w-5" />
                 {t.pickup}
               </button>
+              
               <button
   onClick={() => setActiveTab('payments')}
   className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
@@ -357,6 +361,20 @@ export default function AdminPage() {
   <CreditCard className="h-5 w-5" />
   {t.payments}
 </button>
+
+
+<button
+  onClick={() => setActiveTab('profit')}
+  className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
+    activeTab === 'profit'
+      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+      : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
+  }`}
+>
+  <TrendingUp className="h-5 w-5" />
+  {t.profit}
+</button>
+
               
               </div>
 
@@ -365,6 +383,7 @@ export default function AdminPage() {
             <div className="mt-6">
             {activeTab === 'pickup' && <PickupManagement language={language} />}
             {activeTab === 'payments' && <PaymentManagement language={language} />}
+            {activeTab === 'profit' && <ProfitManagement language={language} />}
               {activeTab === 'dashboard' && (
                 <AdminDashboard 
                   presentChildren={presentChildren}

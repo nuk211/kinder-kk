@@ -17,11 +17,16 @@ export async function GET(
         amount: true,
         paymentDate: true,
         receiptNumber: true,
-        createdAt: true,
+        registrationType: true,
       },
     });
 
-    return NextResponse.json({ payments });
+    return NextResponse.json({
+      payments: payments.map(payment => ({
+        ...payment,
+        registrationType: payment.registrationType || 'NOT_SET' // Provide default value
+      }))
+    });
   } catch (error) {
     console.error('Failed to fetch payment details:', error);
     return NextResponse.json(

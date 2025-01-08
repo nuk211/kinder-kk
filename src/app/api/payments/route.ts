@@ -4,13 +4,10 @@ import { prisma } from '@/lib/prisma';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log('Received payment data:', body); // Debug log
-
-    const { childId, amount, paymentDate } = body;
+    const { childId, amount, paymentDate, registrationType } = body;
 
     // Validate the input
     if (!childId || !amount || !paymentDate) {
-      console.log('Missing fields:', { childId, amount, paymentDate }); // Debug log
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -23,52 +20,28 @@ export async function POST(request: Request) {
     });
 
     if (!child) {
-      console.log('Child not found:', childId); // Debug log
       return NextResponse.json(
         { error: 'Child not found' },
         { status: 404 }
       );
     }
 
-    console.log('Found child:', child); // Debug log
-
-    // Create new payment
+    // Create new payment with registration type
     const payment = await prisma.payment.create({
       data: {
         childId,
         amount: parseFloat(amount.toString()),
         paymentDate: new Date(paymentDate),
-        description: 'Payment added',
+        registrationType: registrationType, // Make sure this is being passed from the client
         receiptNumber: `RCP-${Date.now()}`,
       },
     });
 
-    console.log('Payment created:', payment); // Debug log
-
-    // Create a fee record if it doesn't exist
-    const existingFee = await prisma.fee.findFirst({
-      where: { childId },
-    });
-
-    if (!existingFee) {
-      const fee = await prisma.fee.create({
-        data: {
-          childId,
-          totalAmount: parseFloat(amount.toString()),
-          startDate: new Date(),
-          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-          description: 'Initial fee',
-        },
-      });
-      console.log('Created new fee:', fee); // Debug log
-    }
-
-    return NextResponse.json({ success: true, payment });
+    return NextResponse.json(payment);
   } catch (error) {
-    // Log the specific error
-    console.error('Specific error in payment creation:', error);
+    console.error('Failed to create payment:', error);
     return NextResponse.json(
-      { error: `Failed to create payment: ${error.message}` },
+      { error: 'Failed to create payment' },
       { status: 500 }
     );
   }

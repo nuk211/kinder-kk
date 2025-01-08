@@ -3,33 +3,31 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // First get all children
+    // Get all children with their payments and fees
     const children = await prisma.child.findMany({
-      select: {
-        id: true,
-        name: true,
-        fees: true,
-        payments: true
-      }
+      include: {
+        payments: true,
+        fees: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1,
+        },
+      },
     });
 
     // Process the children data
     const processedChildren = children.map(child => {
-      // Calculate total amount from fees (sum of all fees)
-      const totalAmount = child.fees.reduce((sum, fee) => sum + fee.totalAmount, 0);
-      
-      // Calculate paid amount from payments
-      const paidAmount = child.payments.reduce((sum, payment) => sum + payment.amount, 0);
-      
-      // Calculate remaining amount
-      const remainingAmount = totalAmount - paidAmount;
+      const latestFee = child.fees[0];
+      const totalPaid = child.payments.reduce((sum, payment) => sum + payment.amount, 0);
 
       return {
         id: child.id,
         name: child.name,
-        totalAmount: totalAmount || 0,
-        paidAmount: paidAmount || 0,
-        remainingAmount: remainingAmount || 0
+        totalAmount: latestFee?.totalAmount || 0,
+        paidAmount: totalPaid,
+        remainingAmount: (latestFee?.totalAmount || 0) - totalPaid,
+        registrationType: latestFee?.registrationType || null,
       };
     });
 
@@ -37,7 +35,7 @@ export async function GET() {
   } catch (error) {
     console.error('Failed to fetch children:', error);
     return NextResponse.json(
-      { error: `Failed to fetch children: ${error.message}` },
+      { error: 'Failed to fetch children data' },
       { status: 500 }
     );
   }
