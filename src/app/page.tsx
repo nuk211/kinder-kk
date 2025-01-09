@@ -98,14 +98,14 @@ export default function Home() {
                   <div className="h-16 w-16 bg-pink-100 rounded-2xl flex items-center justify-center mb-4 transform group-hover:scale-110 transition-transform duration-300">
                     <Users className="h-8 w-8 text-pink-500" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-3 font-comic">{t.forParents}</h2>
-                  <p className="text-gray-600 mb-6 leading-relaxed h-[72px] font-comic">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-3 ">{t.forParents}</h2>
+                  <p className="text-gray-600 mb-6 leading-relaxed h-[72px] ">
                     {t.parentDesc}
                   </p>
                 </div>
                 <Link 
                   href="/parent"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-blue-500 text-white px-6 py-3 rounded-xl hover:from-pink-600 hover:to-blue-600 transition-all duration-200 font-comic transform hover:scale-105"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-blue-500 text-white px-6 py-3 rounded-xl hover:from-pink-600 hover:to-blue-600 transition-all duration-200  transform hover:scale-105"
                 >
                   {t.parentPortal}
                   <ArrowRight className={`h-4 w-4 ${language === 'ar' ? 'rotate-180' : ''}`} />
@@ -120,14 +120,14 @@ export default function Home() {
                   <div className="h-16 w-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-4 transform group-hover:scale-110 transition-transform duration-300">
                     <GraduationCap className="h-8 w-8 text-blue-500" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-3 font-comic">{t.forStaff}</h2>
-                  <p className="text-gray-600 mb-6 leading-relaxed h-[72px] font-comic">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-3 ">{t.forStaff}</h2>
+                  <p className="text-gray-600 mb-6 leading-relaxed h-[72px] ">
                     {t.staffDesc}
                   </p>
                 </div>
                 <Link 
                   href="/admin"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200 font-comic transform hover:scale-105"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200  transform hover:scale-105"
                 >
                   {t.staffPortal}
                   <ArrowRight className={`h-4 w-4 ${language === 'ar' ? 'rotate-180' : ''}`} />
@@ -184,9 +184,7 @@ export default function Home() {
         .animation-delay-6000 {
           animation-delay: 6s;
         }
-        .font-comic {
-          font-family: 'Comic Sans MS', cursive, sans-serif;
-        }
+       
       `}</style>
     </main>
   );
