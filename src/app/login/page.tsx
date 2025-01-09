@@ -80,16 +80,16 @@ export default function LoginPage() {
       const res = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
-        redirect: false, // Avoid automatic redirection
+        redirect: false, // Prevent automatic redirection
       });
   
       if (res?.error) {
-        setError("Invalid credentials"); // Avoid exposing raw error messages
+        setError("Invalid credentials"); // Do not expose raw error messages
         return;
       }
   
       if (res?.ok) {
-        router.push("/"); // Redirect to the homepage on success
+        router.replace("/"); // Redirect securely without query strings
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -98,6 +98,7 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+  
   
 
   const t = translations[language];
