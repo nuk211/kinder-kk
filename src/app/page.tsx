@@ -78,14 +78,14 @@ export default function Home() {
         <Navbar />
         <div className="container mx-auto px-4 py-16">
           <div className="text-center mb-16 animate-fade-up">
-            <h1 className="text-5xl font-bold mb-4 transform transition-all duration-300 ease-in-out font-comic">
+            <h1 className="text-5xl font-bold mb-4 transform transition-all duration-300 ease-in-out">
               {t.welcome}{" "}
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-blue-500 relative inline-block animate-wave">
                 SunWay
                 <span className="absolute -top-6 right-0 text-3xl animate-spin-slow">✨</span>
               </span>
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto font-comic">
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto ">
               {t.subtitle}
             </p>
           </div>
