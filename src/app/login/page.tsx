@@ -142,6 +142,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} 
+           method="POST" // Add this line
             className={`bg-white/90 backdrop-blur-lg p-8 rounded-3xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border-4 border-pink-200 space-y-6 animate-fade-up hover:shadow-[0_0_25px_rgba(0,0,0,0.15)] transition-all duration-300 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 font-comic">
