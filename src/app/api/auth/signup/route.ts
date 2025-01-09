@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { hash } from 'bcrypt';
 import { prisma } from "@/lib/prisma";
+import { Role } from '@prisma/client';
 
 export async function POST(request: Request) {
   try {
@@ -25,13 +26,23 @@ export async function POST(request: Request) {
         email,
         name,
         password: hashedPassword,
-        role: 'PARENT' // default role or based on signup type
+        role: Role.PARENT // Using enum from Prisma
       }
     });
 
-    return NextResponse.json({ message: 'User created successfully' }, { status: 201 });
+    return NextResponse.json({ message: 'User created successfully', userId: newUser.id }, { status: 201 });
   } catch (error: any) {
-    console.error(error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    // Enhanced error logging
+    console.error('Detailed signup error:', {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    return NextResponse.json({ 
+      error: 'Internal Server Error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    }, { status: 500 });
   }
 }
