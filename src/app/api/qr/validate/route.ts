@@ -17,10 +17,11 @@ export async function POST(request: NextRequest) {
     const { qrCode } = await request.json();
     console.log('2. Received request body:', { qrCode });
 
-    const today = new Date().toISOString().split('T')[0];
+  // const today = new Date().toISOString().split('T')[0];
+     const today = "sunway-";
     if (!qrCode.includes(today)) {
       return NextResponse.json(
-        { error: 'QR code has expired. Please scan today\'s code.' },
+        { error: 'QR code is not valid' },
         { status: 400 }
       );
     }
