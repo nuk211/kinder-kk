@@ -74,31 +74,31 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
-
+    setError("");
+  
     try {
-      const res = await signIn('credentials', {
+      const res = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
-        redirect: false
+        redirect: false, // Avoid automatic redirection
       });
-
+  
       if (res?.error) {
-        setError(res.error);
+        setError("Invalid credentials"); // Avoid exposing raw error messages
         return;
       }
-
+  
       if (res?.ok) {
-        router.push('/');
-        router.refresh();
+        router.push("/"); // Redirect to the homepage on success
       }
     } catch (error) {
-      console.error(error);
-      setError('An unexpected error occurred');
+      console.error("Login error:", error);
+      setError("An unexpected error occurred"); // General error message
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   const t = translations[language];
 
