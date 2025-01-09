@@ -1,6 +1,6 @@
 // src/app/api/pickup/register/route.ts
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 
 const sendSms = async (to: string, message: string) => {
   try {

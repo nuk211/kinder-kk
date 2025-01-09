@@ -1,10 +1,26 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const sortBy = searchParams.get('sortBy') || 'name';
+    const order = searchParams.get('order') || 'asc';
+    const limit = parseInt(searchParams.get('limit') || '100');
+    const search = searchParams.get('search') || '';
+
     // Get all children with their payments and fees
     const children = await prisma.child.findMany({
+      where: {
+        name: {
+          contains: search,
+          mode: 'insensitive',
+        },
+      },
+      orderBy: {
+        [sortBy]: order,
+      },
+      take: limit,
       include: {
         payments: true,
         fees: {
