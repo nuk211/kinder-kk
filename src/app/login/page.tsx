@@ -1,8 +1,7 @@
-//DONE
+// Import necessary hooks
 'use client';
-
+import { useState, useEffect } from 'react'; // Add useEffect here
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2, Lock, Mail, Globe } from 'lucide-react';
 
@@ -36,10 +35,20 @@ export default function LoginPage() {
     password: ''
   });
 
+  // Add this useEffect block to clean sensitive query parameters
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("email") || url.searchParams.has("password")) {
+      url.searchParams.delete("email");
+      url.searchParams.delete("password");
+      window.history.replaceState(null, "", url.pathname); // Clean the URL
+    }
+  }, []);
+
   const translations: TranslationsType = {
     en: {
       welcome: "Welcome to",
-      subtitle: "Where learning meets fun! 🌈",
+      subtitle: "Where learning meets fun! ",
       email: "Email Address",
       emailPlaceholder: "Enter your email",
       password: "Password",
@@ -51,7 +60,7 @@ export default function LoginPage() {
     },
     ar: {
       welcome: "مرحباً بكم في",
-      subtitle: "حيث يلتقي التعلم بالمرح! 🌈",
+      subtitle: "حيث يلتقي التعلم بالمرح! ",
       email: "البريد الإلكتروني",
       emailPlaceholder: "أدخل بريدك الإلكتروني",
       password: "كلمة المرور",
@@ -74,32 +83,31 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
-
+    setError("");
+  
     try {
-      const res = await signIn('credentials', {
+      const res = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
-        redirect: false
+        redirect: false, // Prevent automatic redirection
       });
-
+  
       if (res?.error) {
-        setError(res.error);
+        setError("Invalid credentials"); // Avoid exposing raw error messages
         return;
       }
-
+  
       if (res?.ok) {
-        router.push('/');
-        router.refresh();
+        router.replace("/"); // Redirect securely without query strings
       }
     } catch (error) {
-      console.error(error);
-      setError('An unexpected error occurred');
+      console.error("Login error:", error);
+      setError("An unexpected error occurred"); // General error message
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   const t = translations[language];
 
   return (
@@ -141,6 +149,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} 
+          
             className={`bg-white/90 backdrop-blur-lg p-8 rounded-3xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border-4 border-pink-200 space-y-6 animate-fade-up hover:shadow-[0_0_25px_rgba(0,0,0,0.15)] transition-all duration-300 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 font-comic">
