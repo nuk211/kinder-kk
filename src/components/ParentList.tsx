@@ -317,9 +317,9 @@ const ParentList = ({ language = 'en' }: ParentListProps) => {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-50 z-50">
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6">
+                <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-lg font-semibold mb-4">
               {mode === 'create' ? t.addNewParent : t.editParent}
             </h3>
@@ -332,7 +332,7 @@ const ParentList = ({ language = 'en' }: ParentListProps) => {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-1"
                   />
                 </div>
 

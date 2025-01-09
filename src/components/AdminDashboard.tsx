@@ -85,7 +85,6 @@ const translations = {
     pickedUpAction: "Picked up",
     noRecentActivities: "No recent activities",
     noChildrenPresent: "No children present",
-    validForWeek: "Valid for a week",
     present: "Present",
     all: "All",
     checkInsFilter: "Check-ins",
@@ -139,7 +138,6 @@ const translations = {
     pickedUpAction: "تم الاستلام",
     noRecentActivities: "لا توجد نشاطات حديثة",
     noChildrenPresent: "لا يوجد أطفال حاضرون",
-    validForWeek: "صالح لمدة أسبوع",
     present: "حاضر",
     all: "الكل",
     checkInsFilter: "تسجيلات الحضور",
@@ -628,9 +626,7 @@ const AdminDashboard = ({ language = 'en' }: AdminDashboardProps) => {
       <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
       <h3 className="text-lg font-medium">{t.checkInQRCode}</h3>
-      <p className="text-sm text-gray-500">
-        {t.validForWeek}: {new Date().toLocaleDateString()}
-      </p>
+      
     </div>
         <div className="flex justify-center bg-white p-6 rounded-lg border-2 border-dashed">
           <QRGenerator schoolId="sunway" size={300} />
