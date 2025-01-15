@@ -6,7 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, DollarSign, TrendingUp, TrendingDown, Plus, Trash2, Clock } from 'lucide-react';
+import { 
+  Loader2, 
+  DollarSign, 
+  TrendingUp, 
+  TrendingDown, 
+  Plus, 
+  Trash2, 
+  Clock,
+  Lock,
+  Eye,
+  EyeOff 
+} from 'lucide-react';
 
 const profitTranslations = {
   en: {
@@ -78,13 +89,32 @@ interface ProfitData {
   expenses: Expense[];
 }
 
+const protectionTranslations = {
+  en: {
+    protectedPage: "Protected Page",
+    enterPassword: "Enter password to access this page",
+    password: "Password",
+    unlockPage: "Unlock Page",
+    lockPage: "Lock Page",
+  },
+  ar: {
+    protectedPage: "صفحة محمية",
+    enterPassword: "أدخل كلمة المرور للوصول إلى هذه الصفحة",
+    password: "كلمة المرور",
+    unlockPage: "فتح الصفحة",
+    lockPage: "قفل الصفحة",
+  }
+};
+
 const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
+  // Existing states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [profitData, setProfitData] = useState<ProfitData>({
     totalIncome: 0,
     totalExpenses: 0,
     netProfit: 0,
+    totalRemaining: 0,
     expenses: []
   });
   const [newExpense, setNewExpense] = useState({
@@ -92,7 +122,15 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
     description: ''
   });
 
+
+
+  const [isLocked, setIsLocked] = useState(true);
+  const [password, setPassword] = useState('');
+  const [protectionError, setProtectionError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
   const t = profitTranslations[language];
+  const pt = protectionTranslations[language];
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString(language === 'ar' ? 'ar-IQ' : 'en-IQ');
@@ -148,8 +186,161 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
   };
 
   useEffect(() => {
-    fetchProfitData();
+    const checkLockStatus = async () => {
+      try {
+        // Check localStorage first
+        const storedLockState = localStorage.getItem('pageLockState');
+        if (storedLockState) {
+          const { page, isLocked } = JSON.parse(storedLockState);
+          // Only unlock if explicitly set to unlocked in localStorage
+          if ((page === 'payments' || page === 'profit') && !isLocked) { 
+            setIsLocked(false);
+            if (!isLocked) {
+              fetchProfitData(); // or fetchProfitData() for profit page
+            }
+            return;
+          }
+        }
+  
+        // Default to locked if no valid localStorage state
+        setIsLocked(true);
+        
+      } catch (error) {
+        console.error('Failed to check lock status:', error);
+        // If any error occurs, default to locked state
+        setIsLocked(true);
+      }
+    };
+  
+    checkLockStatus();
   }, []);
+
+
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/admin/protection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: 'profit', password }), // use 'profit' for ProfitManagement
+      });
+  
+      if (!res.ok) {
+        const data = await res.json();
+        setProtectionError(data.error || (language === 'en' ? 'Failed to unlock page' : 'فشل في فتح الصفحة'));
+        return;
+      }
+  
+      setIsLocked(false);
+      // Store the unlocked state
+      localStorage.setItem('pageLockState', JSON.stringify({ 
+        page: 'profit', // use 'profit' for ProfitManagement
+        isLocked: false 
+      }));
+      setPassword('');
+      setProtectionError('');
+      fetchProfitData(); // use fetchProfitData() for ProfitManagement
+    } catch (error) {
+      setProtectionError(language === 'en' ? 'Failed to unlock page' : 'فشل في فتح الصفحة');
+    }
+  };
+
+  const handleLock = async () => {
+    try {
+      await fetch('/api/admin/protection', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: 'profit' }), // use 'profit' for ProfitManagement
+      });
+      setIsLocked(true);
+      // Remove the stored state when locking
+      localStorage.removeItem('pageLockState');
+    } catch (error) {
+      console.error('Failed to lock page:', error);
+    }
+  };
+
+
+  if (isLocked) {
+    return (
+      <div className="space-y-6" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-800">
+            {t.profitManagement}
+          </h2>
+        </div>
+
+        <Card className="max-w-md mx-auto bg-white/90 backdrop-blur-lg rounded-xl shadow-lg border-2 border-pink-200">
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center space-y-6">
+              <div className="p-3 bg-pink-50 rounded-full">
+                <Lock className="w-12 h-12 text-pink-500" />
+              </div>
+              
+              <div className="text-center">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {pt.protectedPage}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {pt.enterPassword}
+                </p>
+              </div>
+
+              <form onSubmit={handleUnlock} className="w-full space-y-4">
+                {protectionError && (
+                  <Alert variant="destructive" className="bg-red-50 border-2 border-red-200 rounded-xl">
+                    <AlertDescription>{protectionError}</AlertDescription>
+                  </Alert>
+                )}
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    {pt.password}
+                  </label>
+                  <div className="relative">
+  <Input
+    type={showPassword ? "text" : "password"}
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    className="pr-10 bg-white/50 border-2 border-pink-200 focus:border-pink-500 rounded-lg"
+    required
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100 transition-colors"
+  >
+    {showPassword ? (
+      <EyeOff className="h-4 w-4 text-gray-500" />
+    ) : (
+      <Eye className="h-4 w-4 text-gray-500" />
+    )}
+  </button>
+</div>
+                </div>
+
+                <Button 
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-pink-500 to-blue-500 text-white rounded-xl px-6 py-3 transform transition-all duration-200 hover:scale-105"
+                  disabled={!password}
+                >
+                  {pt.unlockPage}
+                </Button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+      </div>
+    );
+  }
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,6 +400,19 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
 
   return (
     <div className="space-y-6" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">
+          {t.profitManagement}
+        </h2>
+        <Button
+          onClick={handleLock}
+          size="sm"
+          className="bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl px-4 py-2 transform transition-all duration-200 hover:scale-105 flex items-center gap-2"
+        >
+          <Lock className="h-4 w-4" />
+          {pt.lockPage}
+        </Button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-white/90 backdrop-blur-lg rounded-xl shadow-lg border-2 border-pink-200 transform transition-all duration-200 hover:scale-105">
           <CardHeader className="flex flex-row items-center justify-between pb-2">

@@ -158,3 +158,11 @@ model Expense {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model AdminProtection {
+  id        String   @id @default(cuid())
+  page      String   @unique // e.g., "payments", "accounting", "profit"
+  password  String   // hashed password
+  isLocked  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
