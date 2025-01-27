@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  PARENT
+}
+
+enum ChildStatus {
+  ABSENT
+  PRESENT
+  PICKUP_REQUESTED
+  PICKED_UP
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  PICKED_UP
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        Role     @default(PARENT)
+  phoneNumber String?
+  children    Child[]
+  notifications Notification[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Child {
+  id                String       @id @default(uuid())
+  name              String
+  parent            User         @relation(fields: [parentId], references: [id])
+  parentId          String
+  status            ChildStatus  @default(ABSENT)
+  qrCode            String       // Remove @unique to allow duplicates
+  registrationType  RegistrationType?
+  isRegistered      Boolean      @default(false)  // Add this line
+  attendanceRecords Attendance[]
+  notifications     Notification[]
+  payments          Payment[]    
+  fees             Fee[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([parentId])
+}
+
+model Attendance {
+ id           String           @id @default(uuid())
+  childId      String
+  child        Child            @relation(fields: [childId], references: [id])
+  date         DateTime         @default(now())
+  status       AttendanceStatus
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([childId])
+}
+model Notification {
+  id        String   @id @default(uuid())
+  message   String
+  type      String   // 'CHECK_IN' or 'PICK_UP'
+  read      Boolean  @default(false)
+  userId    String   // Admin who should receive this notification
+  childId   String
+  child     Child    @relation(fields: [childId], references: [id])
+  parentId  String
+  parent    User     @relation(fields: [parentId], references: [id])
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([childId])
+  @@index([parentId])
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+enum ExpenseType {
+  GENERAL
+  FOOD
+}
+
+model Payment {
+  id               String    @id @default(uuid())
+  childId          String
+  child            Child     @relation(fields: [childId], references: [id])
+  amount           Float
+  paymentDate      DateTime  @default(now())
+  registrationType String?
+  receiptNumber    String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([childId])
+}
+
+model Fee {
+  id               String           @id @default(uuid())
+  childId          String
+  child            Child            @relation(fields: [childId], references: [id])
+  totalAmount      Float
+  registrationType RegistrationType // Using the enum type
+  description      String?
+  startDate        DateTime
+  endDate          DateTime
+  installments     Installment[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([childId])
+}
+
+enum RegistrationType {
+  DAILY
+  MONTHLY
+  YEARLY
+}
+
+model Installment {
+  id               String            @id @default(uuid())
+  feeId            String
+  fee              Fee               @relation(fields: [feeId], references: [id])
+  amount           Float
+  dueDate          DateTime
+  paidAmount       Float             @default(0)
+  status           InstallmentStatus @default(PENDING)
+  registrationType RegistrationType  // Added this field
+  paidAt           DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([feeId])
+}
+
+enum InstallmentStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+model Expense {
+  id          String      @id @default(uuid())
+  amount      Float
+  description String
+  type        ExpenseType @default(GENERAL)  // Add this line
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model AdminProtection {
+  id        String   @id @default(cuid())
+  page      String   @unique // e.g., "payments", "accounting", "profit"
+  password  String   // hashed password
+  isLocked  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model MonthlyStatistics {
+  id            String    @id @default(cuid())
+  month         Int
+  year          Int
+  totalExpenses Float
+  totalIncome   Float     // Added
+  netProfit     Float     // Added
+  isClosed      Boolean   @default(false)
+  closedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+
+// THE NEW TABLES FOR MONTHLY REPORT
+
+model MonthlyFinancialRecord {
+  id            String    @id @default(uuid())
+  month         Int
+  year          Int
+  totalIncome   Float
+  totalExpenses Float
+  netProfit     Float
+  isClosed      Boolean   @default(false)
+  closedAt      DateTime?
+  
+  // Detailed breakdowns
+  paymentRecords    MonthlyPaymentRecord[]
+  expenseRecords    MonthlyExpenseRecord[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([month, year], name: "month_year")
+}
+
+model MonthlyPaymentRecord {
+  id            String    @id @default(uuid())
+  monthlyRecord MonthlyFinancialRecord @relation(fields: [recordId], references: [id])
+  recordId      String
+  
+  childId       String
+  childName     String    // Stored to preserve history
+  amount        Float
+  paymentDate   DateTime  
+  paymentType   String    // DAILY, MONTHLY, YEARLY
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([recordId])
+}
+
+model MonthlyExpenseRecord {
+  id            String      @id @default(uuid())
+  monthlyRecord MonthlyFinancialRecord @relation(fields: [recordId], references: [id])
+  recordId      String
+  
+  amount        Float
+  description   String
+  expenseType   ExpenseType
+  expenseDate   DateTime
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([recordId])
+}
