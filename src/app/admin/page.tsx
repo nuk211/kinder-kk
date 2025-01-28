@@ -12,6 +12,8 @@ import { Globe, LayoutDashboard, Users, Calendar, UserSquare2, UserMinus, Credit
 import PickupManagement from '@/components/PickupManagement';
 import PaymentManagement from '@/components/PaymentManagement';
 import ProfitManagement from '@/components/ProfitManagement';
+import MonthlyReport from '@/components/MonthlyReport';
+
 interface Notification {
   id: string;
   message: string;

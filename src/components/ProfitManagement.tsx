@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import MonthlyReport from './MonthlyReport';
 import { 
   Loader2, 
   DollarSign, 
@@ -15,6 +16,7 @@ import {
   Trash2, 
   Clock,
   Lock,
+  FileText,
   Eye,
   EyeOff 
 } from 'lucide-react';
@@ -39,6 +41,12 @@ const profitTranslations = {
     totalRemaining: "Total Remaining Installments",
     expenseDate: "Date",
     expenseAmount: "Amount",
+    expenseType: "Expense Type",
+    monthlyReport: "Monthly Financial Report",
+    showReport: "Show Report",
+    hideReport: "Hide Report",
+    generalExpense: "General Expense",
+    foodExpense: "Food Expense",
     expenseDescription: "Description",
     recentExpenses: "Recent Expenses",
     loading: "Loading...",
@@ -53,6 +61,12 @@ const profitTranslations = {
     amount: "المبلغ",
     description: "الوصف",
     addExpense: "إضافة مصروف",
+    expenseType: "نوع المصروف",
+    monthlyReport: "التقرير المالي الشهري",
+    showReport: "عرض التقرير",
+    hideReport: "إخفاء التقرير",
+    generalExpense: "مصروف عام",
+    foodExpense: "مصروف غذائي",
     confirmDeleteExpense: "هل أنت متأكد من حذف هذا المصروف؟",
     deleteExpense: "حذف المصروف",
     resetExpenses: "حذف جميع المصروفات",
@@ -70,24 +84,63 @@ const profitTranslations = {
   }
 };
 
-interface ProfitManagementProps {
-  language: 'en' | 'ar';
+
+enum ExpenseType {
+  GENERAL = 'GENERAL',
+  FOOD = 'FOOD'
 }
 
+// Update the Expense interface
 interface Expense {
   id: string;
   amount: number;
   description: string;
+  type: ExpenseType;  // Add this line
   createdAt: string;
 }
+
+interface ProfitManagementProps {
+  language: 'en' | 'ar';
+}
+
 
 interface ProfitData {
   totalIncome: number;
   totalExpenses: number;
   netProfit: number;
-  totalRemaining: number; // Add this line
-  expenses: Expense[];
+  totalRemaining: number;
+  expenses: Array<{
+    id: string;
+    amount: number;
+    description: string;
+    type: 'FOOD' | 'GENERAL';
+    createdAt: string;
+  }>;
+  payments: Array<{
+    id: string;
+    childId: string;
+    childName: string;
+    amount: number;
+    paymentDate: string;
+    registrationType: 'DAILY' | 'MONTHLY' | 'YEARLY';
+  }>;
+  installments: Array<{
+    id: string;
+    childId: string;
+    childName: string;
+    amount: number;
+    paidAmount: number;
+    dueDate: string;
+    status: 'PAID' | 'PENDING' | 'OVERDUE';
+    registrationType: string;
+  }>;
+  children: Array<{
+    registrationType: string;
+    paidAmount: number;
+  }>;
 }
+
+
 
 const protectionTranslations = {
   en: {
@@ -108,18 +161,24 @@ const protectionTranslations = {
 
 const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
   // Existing states
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showMonthlyReport, setShowMonthlyReport] = useState(false);
   const [profitData, setProfitData] = useState<ProfitData>({
     totalIncome: 0,
     totalExpenses: 0,
     netProfit: 0,
     totalRemaining: 0,
-    expenses: []
+    expenses: [],
+    payments: [],
+    installments: [], // Initialize empty installments array
+    children: []
   });
   const [newExpense, setNewExpense] = useState({
     amount: '',
-    description: ''
+    description: '',
+    type: ExpenseType.GENERAL  // Add default type
   });
 
 
@@ -147,14 +206,28 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
     });
   };
 
+   
+
   const fetchProfitData = async () => {
     try {
       const response = await fetch('/api/admin/profit');
       const data = await response.json();
       if (response.ok) {
-        setProfitData(data);
+        // Transform the data to include payments
+        setProfitData({
+          ...data,
+          payments: data.children?.map((child: any) => ({
+            id: child.id,
+            childId: child.id,
+            childName: child.name,
+            amount: child.paidAmount,
+            paymentDate: child.createdAt,
+            registrationType: child.registrationType
+          })) || [],
+          children: data.children || []
+        });
       } else {
-        setError(data.error || t.errorOccurred);
+        setError(t.errorOccurred);
       }
     } catch (err) {
       setError(t.errorOccurred);
@@ -346,16 +419,27 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Create a properly typed expense object
+      const expenseData = {
+        amount: Number(newExpense.amount),
+        description: newExpense.description,
+        type: newExpense.type as ExpenseType // Ensure type is properly cast
+      };
+  
       const response = await fetch('/api/admin/profit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newExpense),
+        body: JSON.stringify(expenseData),
       });
-
+  
       if (response.ok) {
-        setNewExpense({ amount: '', description: '' });
+        setNewExpense({ 
+          amount: '', 
+          description: '', 
+          type: ExpenseType.GENERAL
+        });
         await fetchProfitData();
       } else {
         const data = await response.json();
@@ -368,6 +452,7 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
     }
   };
 
+  
   const handleResetExpenses = async () => {
     if (window.confirm(t.confirmReset)) {
       setLoading(true);
@@ -476,27 +561,38 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
             </Button>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAddExpense} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <Input
-                  type="number"
-                  placeholder={t.amount}
-                  value={newExpense.amount}
-                  onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
-                  step="0.01"
-                  min="0"
-                  required
-                  className="bg-white/50 border-2 border-pink-200 focus:border-pink-500 rounded-lg"
-                />
-                <Input
-                  type="text"
-                  placeholder={t.description}
-                  value={newExpense.description}
-                  onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
-                  required
-                  className="bg-white/50 border-2 border-pink-200 focus:border-pink-500 rounded-lg"
-                />
-              </div>
+          <form onSubmit={handleAddExpense} className="space-y-4">
+
+            
+  <div className="grid grid-cols-1 gap-4">
+    <Input
+      type="number"
+      placeholder={t.amount}
+      value={newExpense.amount}
+      onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+      step="0.01"
+      min="0"
+      required
+      className="bg-white/50 border-2 border-pink-200 focus:border-pink-500 rounded-lg"
+    />
+    <Input
+      type="text"
+      placeholder={t.description}
+      value={newExpense.description}
+      onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
+      required
+      className="bg-white/50 border-2 border-pink-200 focus:border-pink-500 rounded-lg"
+    />
+    <select
+      value={newExpense.type}
+      onChange={(e) => setNewExpense({ ...newExpense, type: e.target.value as ExpenseType })}
+      required
+      className="w-full p-2 bg-white/50 border-2 border-pink-200 focus:border-pink-500 rounded-lg"
+    >
+      <option value={ExpenseType.GENERAL}>{t.generalExpense}</option>
+      <option value={ExpenseType.FOOD}>{t.foodExpense}</option>
+    </select>
+  </div>
               <Button
                 type="submit"
                 disabled={loading}
@@ -513,50 +609,88 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
           </CardContent>
         </Card>
 
+        
+
         {/* Expenses List Card */}
-        <Card className="bg-white/90 backdrop-blur-lg rounded-xl shadow-lg border-2 border-pink-200">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-xl font-medium text-gray-700">
-              {t.recentExpenses}
-            </CardTitle>
-            <Clock className="h-5 w-5 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-[400px] overflow-y-auto">
-              {profitData.expenses.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">{t.noExpenses}</p>
-              ) : (
-                profitData.expenses.map((expense) => (
-                  <div
-                    key={expense.id}
-                    className="bg-white/50 p-4 rounded-lg border-2 border-pink-100 hover:border-pink-300 transition-all duration-200"
-                  >
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">{expense.description}</p>
-                        <p className="text-sm text-gray-500">{formatDate(expense.createdAt)}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-        <p className="font-bold text-red-600">
-          {formatCurrency(expense.amount)} {t.currency}
-        </p>
-        <Button
-          onClick={() => handleDeleteExpense(expense.id)}
-          size="sm"
-          variant="ghost"
-          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+<Card className="bg-white/90 backdrop-blur-lg rounded-xl shadow-lg border-2 border-pink-200">
+  <CardHeader className="flex flex-row items-center justify-between">
+    <CardTitle className="text-xl font-medium text-gray-700">
+      {t.recentExpenses}
+    </CardTitle>
+    <Clock className="h-5 w-5 text-gray-500" />
+  </CardHeader>
+  <CardContent>
+    <div className="space-y-4 max-h-[400px] overflow-y-auto">
+      {profitData.expenses.length === 0 ? (
+        <p className="text-gray-500 text-center py-4">{t.noExpenses}</p>
+      ) : (
+        profitData.expenses.map((expense) => (
+          <div
+            key={expense.id}
+            className="bg-white/50 p-4 rounded-lg border-2 border-pink-100 hover:border-pink-300 transition-all duration-200"
+          >
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex-1">
+                <p className="font-medium text-gray-800">{expense.description}</p>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    expense.type === ExpenseType.FOOD 
+                      ? 'bg-orange-100 text-orange-800' 
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {expense.type === ExpenseType.FOOD ? t.foodExpense : t.generalExpense}
+                  </span>
+                  <p className="text-sm text-gray-500">{formatDate(expense.createdAt)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <p className="font-bold text-red-600">
+                  {formatCurrency(expense.amount)} {t.currency}
+                </p>
+                <Button
+                  onClick={() => handleDeleteExpense(expense.id)}
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        ))
+      )}
+    </div>
+  </CardContent>
+</Card>
       </div>
+
+      {/* Add Monthly Report Card here */}
+      <Card className="bg-white/90 backdrop-blur-lg rounded-xl shadow-lg border-2 border-pink-200">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-medium text-gray-700">
+            {language === 'en' ? 'Monthly Financial Report' : 'التقرير المالي الشهري'}
+          </CardTitle>
+          <Button
+            onClick={() => setShowMonthlyReport(!showMonthlyReport)}
+            className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl px-4 py-2 transform transition-all duration-200 hover:scale-105 flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            {language === 'en' 
+              ? (showMonthlyReport ? 'Hide Report' : 'Show Report') 
+              : (showMonthlyReport ? 'إخفاء التقرير' : 'عرض التقرير')
+            }
+          </Button>
+        </CardHeader>
+        {showMonthlyReport && (
+          <CardContent>
+            <MonthlyReport
+              language={language}
+              profitData={profitData}
+            />
+          </CardContent>
+        )}
+      </Card>
 
       {error && (
         <Alert variant="destructive" className="bg-red-50 border-2 border-red-200 rounded-xl">

@@ -44,12 +44,13 @@ model Child {
   parent            User         @relation(fields: [parentId], references: [id])
   parentId          String
   status            ChildStatus  @default(ABSENT)
-  qrCode            String       @unique
-  registrationType RegistrationType?
+  qrCode            String       // Remove @unique to allow duplicates
+  registrationType  RegistrationType?
+  isRegistered      Boolean      @default(false)  // Add this line
   attendanceRecords Attendance[]
   notifications     Notification[]
   payments          Payment[]    
-  fees             Fee[]        // Add this line for Fee relation
+  fees             Fee[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
@@ -94,12 +95,17 @@ enum PaymentStatus {
   OVERDUE
 }
 
+enum ExpenseType {
+  GENERAL
+  FOOD
+}
+
 model Payment {
   id               String    @id @default(uuid())
   childId          String
   child            Child     @relation(fields: [childId], references: [id])
   amount           Float
-  paymentDate      DateTime
+  paymentDate      DateTime  @default(now())
   registrationType String?
   receiptNumber    String?   @unique
   createdAt        DateTime  @default(now())
@@ -131,16 +137,17 @@ enum RegistrationType {
 }
 
 model Installment {
-  id          String            @id @default(uuid())
-  feeId       String
-  fee         Fee               @relation(fields: [feeId], references: [id])
-  amount      Float
-  dueDate     DateTime
-  paidAmount  Float             @default(0)
-  status      InstallmentStatus @default(PENDING)
-  paidAt      DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id               String            @id @default(uuid())
+  feeId            String
+  fee              Fee               @relation(fields: [feeId], references: [id])
+  amount           Float
+  dueDate          DateTime
+  paidAmount       Float             @default(0)
+  status           InstallmentStatus @default(PENDING)
+  registrationType RegistrationType  // Added this field
+  paidAt           DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([feeId])
 }
@@ -152,11 +159,12 @@ enum InstallmentStatus {
 }
 
 model Expense {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   amount      Float
   description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  type        ExpenseType @default(GENERAL)  // Add this line
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
 model AdminProtection {
@@ -165,4 +173,73 @@ model AdminProtection {
   password  String   // hashed password
   isLocked  Boolean  @default(true)
   updatedAt DateTime @updatedAt
+}
+
+model MonthlyStatistics {
+  id            String    @id @default(cuid())
+  month         Int
+  year          Int
+  totalExpenses Float
+  totalIncome   Float     // Added
+  netProfit     Float     // Added
+  isClosed      Boolean   @default(false)
+  closedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+
+// THE NEW TABLES FOR MONTHLY REPORT
+
+model MonthlyFinancialRecord {
+  id            String    @id @default(uuid())
+  month         Int
+  year          Int
+  totalIncome   Float
+  totalExpenses Float
+  netProfit     Float
+  isClosed      Boolean   @default(false)
+  closedAt      DateTime?
+  
+  // Detailed breakdowns
+  paymentRecords    MonthlyPaymentRecord[]
+  expenseRecords    MonthlyExpenseRecord[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([month, year], name: "month_year")
+}
+
+model MonthlyPaymentRecord {
+  id            String    @id @default(uuid())
+  monthlyRecord MonthlyFinancialRecord @relation(fields: [recordId], references: [id])
+  recordId      String
+  
+  childId       String
+  childName     String    // Stored to preserve history
+  amount        Float
+  paymentDate   DateTime  
+  paymentType   String    // DAILY, MONTHLY, YEARLY
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([recordId])
+}
+
+model MonthlyExpenseRecord {
+  id            String      @id @default(uuid())
+  monthlyRecord MonthlyFinancialRecord @relation(fields: [recordId], references: [id])
+  recordId      String
+  
+  amount        Float
+  description   String
+  expenseType   ExpenseType
+  expenseDate   DateTime
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([recordId])
 }

@@ -13,16 +13,14 @@ const childCreateSchema = z.object({
 // Function to generate a consistent QR code
 const generateQRCode = async () => {
   const count = await prisma.child.count();
-   // Count existing children
-  return `QR${count + 1}`; // Generate QR code like QR126
+  return `QR${count + 1}`;
 };
 
 // Function to fix existing QR codes
 const fixQRCode = async () => {
   const children = await prisma.child.findMany();
-  let counter = 1; // Start counter for QR codes
+  let counter = 1;
   for (const child of children) {
-    // Check if QR code is invalid or missing
     if (!child.qrCode || child.qrCode.startsWith('default')) {
       const updatedQRCode = `QR${counter++}`;
       await prisma.child.update({
@@ -34,26 +32,70 @@ const fixQRCode = async () => {
   }
 };
 
-// ** GET: Fetch all children **
+// ** GET: Fetch all children with unique entries **
 export async function GET() {
   try {
     const children = await prisma.child.findMany({
+      where: {
+        OR: [
+          { registrationType: { not: null } },  // Include children with registration
+          { registrationType: null }            // Also include children without registration
+        ]
+      },
       include: {
         parent: {
           select: {
+            id: true,
             name: true,
             email: true,
             phoneNumber: true,
           },
         },
+        fees: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
         attendanceRecords: {
           orderBy: { date: 'desc' },
-          take: 5, // Get the 5 most recent attendance records
+          take: 5,
         },
+      },
+      orderBy: {
+        updatedAt: 'desc',
       },
     });
 
-    return NextResponse.json(children);
+    // Process children to include financial information
+    const processedChildren = children.map(child => {
+      const totalAmount = child.fees[0]?.totalAmount || 0;
+      const paidAmount = child.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      
+      return {
+        ...child,
+        totalAmount,
+        paidAmount,
+        remainingAmount: totalAmount - paidAmount,
+      };
+    });
+
+    // Create a Map to store unique children based on name and parentId
+    const uniqueChildrenMap = new Map();
+
+    processedChildren.forEach(child => {
+      const key = `${child.name}-${child.parent.id}`;
+      if (!uniqueChildrenMap.has(key)) {
+        uniqueChildrenMap.set(key, child);
+      }
+    });
+
+    // Convert Map back to array and sort by name
+    const uniqueChildren = Array.from(uniqueChildrenMap.values())
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return NextResponse.json(uniqueChildren);
   } catch (error) {
     console.error('Error fetching children:', error);
     return NextResponse.json({ error: 'Failed to fetch children' }, { status: 500 });
@@ -64,8 +106,6 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Extract `name`, `status`, and `parentId` from the request body
     const { name, status, parentId } = body;
 
     if (!name) {
@@ -96,7 +136,17 @@ export async function POST(request: NextRequest) {
         parentId: parent.id,
         qrCode,
       },
+      include: {
+        parent: {
+          select: {
+            name: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+      },
     });
+
     return NextResponse.json(child, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -155,7 +205,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// ** DELETE: Delete a child **
+// ** DELETE: Reset registration and delete related records **
 export async function DELETE(request: NextRequest) {
   try {
     const url = new URL(request.url);
@@ -174,20 +224,30 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Child not found' }, { status: 404 });
     }
 
-    // Delete the child's attendance records (to avoid foreign key constraint issues)
-    await prisma.attendance.deleteMany({
-      where: { childId },
-    });
+    // Delete related records and reset child's registration in a transaction
+    await prisma.$transaction([
+      // Delete payments
+      prisma.payment.deleteMany({
+        where: { childId },
+      }),
+      // Delete fees
+      prisma.fee.deleteMany({
+        where: { childId },
+      }),
+      // Update the child record instead of deleting it
+      prisma.child.update({
+        where: { id: childId },
+        data: {
+          registrationType: null,     // Reset registration type
+          status: 'ABSENT',           // Reset status to default
+        },
+      }),
+    ]);
 
-    // Delete the child
-    await prisma.child.delete({
-      where: { id: childId },
-    });
-
-    return NextResponse.json({ message: 'Child deleted successfully' });
+    return NextResponse.json({ message: 'Registration records deleted successfully' });
   } catch (error) {
-    console.error('Error deleting child:', error);
-    return NextResponse.json({ error: 'Failed to delete child' }, { status: 500 });
+    console.error('Error resetting registration:', error);
+    return NextResponse.json({ error: 'Failed to reset registration' }, { status: 500 });
   }
 }
 

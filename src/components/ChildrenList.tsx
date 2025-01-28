@@ -184,7 +184,24 @@ const ChildrenList = ({ language = 'en' }: ChildrenListProps) => {
       const response = await fetch('/api/children')
       if (!response.ok) throw new Error('Failed to fetch children')
       const data: Child[] = await response.json()
-      setChildren(data)
+      
+      // Create a Map to store unique children by name and parentId
+      const uniqueChildrenMap = new Map();
+      
+      // For each child, keep only the latest record (based on updatedAt)
+      data.forEach(child => {
+        const key = `${child.name}-${child.parent.id}`;
+        if (!uniqueChildrenMap.has(key) || 
+            new Date(child.updatedAt) > new Date(uniqueChildrenMap.get(key).updatedAt)) {
+          uniqueChildrenMap.set(key, child);
+        }
+      });
+
+      // Convert Map back to array and sort by name
+      const uniqueChildren = Array.from(uniqueChildrenMap.values())
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setChildren(uniqueChildren);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {

@@ -16,9 +16,14 @@ export async function GET() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Basic stats
-    const [totalChildren, presentToday, pickupRequests, unreadNotifications] = await Promise.all([
-      prisma.child.count(),
+    // Count unique children by name and parentId
+    const uniqueChildren = await prisma.child.groupBy({
+      by: ['name', 'parentId'],
+    });
+    const totalChildren = uniqueChildren.length;
+
+    // Rest of the basic stats
+    const [presentToday, pickupRequests, unreadNotifications] = await Promise.all([
       prisma.child.count({ where: { status: 'PRESENT' } }),
       prisma.child.count({ where: { status: 'PICKUP_REQUESTED' } }),
       prisma.notification.count({ where: { read: false } })

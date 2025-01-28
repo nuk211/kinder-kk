@@ -1,41 +1,59 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Type definitions
+interface ExpenseData {
+  amount: string | number;
+  description: string;
+  type?: "GENERAL" | "FOOD";
+}
+
+interface PrismaExpense {
+  id: string;
+  amount: number;
+  description: string;
+  type: string;
+  createdAt: Date;
+}
+
 export async function GET() {
   console.log('Starting GET request to /api/admin/profit');
   try {
+    // Fetch children with payments
     console.log('Fetching children data...');
     const children = await prisma.child.findMany({
       include: {
-        payments: {
-          select: {
-            amount: true,
-          },
-        },
+        payments: true,
         fees: {
           select: {
+            id: true,
             totalAmount: true,
-          },
+            registrationType: true,
+          }
         },
       },
     });
-    console.log(`Successfully fetched ${children.length} children`);
 
+    // Fetch expenses
     console.log('Fetching expenses...');
     const expenses = await prisma.expense.findMany({
       orderBy: {
         createdAt: 'desc',
       },
-      select: {
-        id: true,
-        amount: true,
-        description: true,
-        createdAt: true,
-      },
-    });
-    console.log(`Successfully fetched ${expenses.length} expenses`);
+    }) as PrismaExpense[];
 
-    // Calculate totals with null checks
+    // Fetch all payments for installments
+    console.log('Fetching payments for installments...');
+    const allPayments = await prisma.payment.findMany({
+      include: {
+        child: true
+      },
+      orderBy: {
+        paymentDate: 'desc'
+      }
+    });
+
+    // Calculate totals
     const totalExpenses = expenses.reduce((sum, expense) => 
       sum + (expense.amount || 0), 0);
 
@@ -51,26 +69,65 @@ export async function GET() {
       return sum + (totalFees - totalPaid);
     }, 0);
 
-    console.log('Calculations completed successfully');
+    // Transform payments data
+    const payments = allPayments.map(payment => ({
+      id: payment.id,
+      childId: payment.childId,
+      childName: payment.child.name,
+      amount: payment.amount,
+      paymentDate: payment.paymentDate.toISOString(),
+      registrationType: payment.registrationType || 'DAILY'
+    }));
+
+    // Transform payments into installments format
+    const installments = allPayments.map(payment => ({
+      id: payment.id,
+      childId: payment.childId,
+      childName: payment.child.name,
+      amount: payment.amount,
+      paidAmount: payment.amount,
+      dueDate: payment.paymentDate.toISOString(),
+      status: 'PAID',
+      registrationType: payment.registrationType || 'DAILY'
+    }));
+
+    console.log('Debug Info:', {
+      totalPayments: payments.length,
+      totalInstallments: installments.length,
+      totalExpenses: expenses.length
+    });
 
     return NextResponse.json({
       totalIncome,
       totalExpenses,
       netProfit: totalIncome - totalExpenses,
       totalRemaining,
-      expenses,
+      expenses: expenses.map(expense => ({
+        id: expense.id,
+        amount: expense.amount,
+        description: expense.description,
+        type: expense.type,
+        createdAt: new Date(expense.createdAt).toISOString()
+      })),
+      payments,
+      installments,
+      children: children.map(child => ({
+        id: child.id,
+        name: child.name,
+        registrationType: child.fees[0]?.registrationType || 'DAILY',
+        paidAmount: child.payments.reduce((sum, payment) => sum + (payment.amount || 0), 0),
+      }))
     });
+
   } catch (error: any) {
     console.error('Detailed error in GET /api/admin/profit:', {
       message: error.message,
-      code: error.code,
-      name: error.name,
       stack: error.stack
     });
     return NextResponse.json(
       { 
         error: 'Failed to fetch profit data',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: error.message
       },
       { status: 500 }
     );
@@ -80,9 +137,12 @@ export async function GET() {
 export async function POST(request: Request) {
   console.log('Starting POST request to /api/admin/profit');
   try {
-    const body = await request.json();
-    const { amount, description } = body;
+    const body = await request.json() as ExpenseData;
+    const { amount, description, type } = body;
 
+    console.log('Received expense data:', body);
+
+    // Validate required fields
     if (!amount || !description) {
       console.log('Validation failed: Missing required fields');
       return NextResponse.json(
@@ -94,25 +154,18 @@ export async function POST(request: Request) {
     console.log('Creating new expense...');
     const expense = await prisma.expense.create({
       data: {
-        amount: parseFloat(amount),
+        amount: Number(amount),
         description,
+        type: type || 'GENERAL',
       },
     });
-    console.log('Expense created successfully:', expense.id);
 
+    console.log('Expense created successfully:', expense.id);
     return NextResponse.json(expense);
   } catch (error: any) {
-    console.error('Detailed error in POST /api/admin/profit:', {
-      message: error.message,
-      code: error.code,
-      name: error.name,
-      stack: error.stack
-    });
+    console.error('Error creating expense:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to create expense',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      { error: 'Failed to create expense' },
       { status: 500 }
     );
   }
@@ -137,10 +190,7 @@ export async function DELETE() {
       stack: error.stack
     });
     return NextResponse.json(
-      { 
-        error: 'Failed to delete expenses',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      { error: 'Failed to delete expenses' },
       { status: 500 }
     );
   }

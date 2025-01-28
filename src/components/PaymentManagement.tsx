@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import RegistrationStats from './RegistrationStats';
 import {
   Table,
   TableBody,
@@ -21,7 +22,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Search, Settings, Trash2, FileText, Lock } from 'lucide-react';
+import { Plus, Search, Settings, Trash2, FileText, Lock, UserPlus } from 'lucide-react';
+
 
 interface PaymentManagementProps {
   language: 'en' | 'ar';
@@ -34,6 +36,8 @@ interface Child {
   paidAmount: number;
   remainingAmount: number;
   registrationType?: 'DAILY' | 'MONTHLY' | 'YEARLY';
+  isRegistered?: boolean;
+  parentId: string;
 }
 
 interface Payment {
@@ -41,7 +45,6 @@ interface Payment {
   amount: number;
   paymentDate: string;
   receiptNumber?: string;
-  registrationType: RegistrationType;
 }
 
 enum RegistrationType {
@@ -121,18 +124,275 @@ const pt = protectionTranslations[language];
     now.setHours(now.getHours() + 3); // Add 3 hours to current time
     return now.toISOString().slice(0, 16);
   });
-  // Fetch children data
-  const fetchChildren = async () => {
-    try {
-      const response = await fetch('/api/payments/children');
-      if (!response.ok) throw new Error('Failed to fetch children');
-      const data = await response.json();
-      console.log('Fetched children data:', data); // Debug log
-      setChildren(data);
-    } catch (error) {
-      console.error('Failed to fetch children data:', error);
-    }
+  // New states for registration
+  const [isRegisterChildOpen, setIsRegisterChildOpen] = useState(false);
+  const [selectedChildName, setSelectedChildName] = useState('');
+  const [selectedParentId, setSelectedParentId] = useState('');
+  const [availableChildren, setAvailableChildren] = useState<Child[]>([]);
+
+    // Fetch all children (both registered and unregistered)
+    const fetchAvailableChildren = async () => {
+      try {
+        const response = await fetch('/api/admin/children/registered');
+        if (!response.ok) throw new Error('Failed to fetch children');
+        const data = await response.json();
+        console.log('Available children:', data);  // Debug log
+        setAvailableChildren(data);
+      } catch (error) {
+        console.error('Failed to fetch available children:', error);
+      }
+    };
+  
+    useEffect(() => {
+      if (!isLocked) {
+        fetchAvailableChildren();
+      }
+    }, [isLocked]);
+
+    const handleRegisterClick = () => {
+      console.log('Register button clicked');  // Debug log
+      setIsRegisterChildOpen(true);
+      console.log('Dialog state after click:', isRegisterChildOpen);  // Debug log
+    };
+
+// Fetch registered children for the payments table
+const fetchChildren = async () => {
+  try {
+    const response = await fetch('/api/payments/children');
+    if (!response.ok) throw new Error('Failed to fetch children');
+    const data = await response.json();
+    setChildren(data);
+  } catch (error) {
+    console.error('Failed to fetch children data:', error);
+  }
+};
+
+useEffect(() => {
+  if (!isLocked) {
+    fetchAvailableChildren();
+    fetchChildren();
+  }
+}, [isLocked]);
+
+// Handle child registration
+// Handle child registration
+const handleRegisterChild = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError('');
+
+  const registrationData = {
+    childName: selectedChildName,
+    parentId: selectedParentId,
+    totalAmount: Number(totalAmount),
+    registrationType: registrationType,
   };
+
+  try {
+    const response = await fetch('/api/payments/register-child', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(registrationData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Registration successful:', data);
+
+    // Refresh both lists
+    await Promise.all([
+      fetchAvailableChildren(),  // Refresh unregistered children list
+      fetchChildren()            // Refresh registered children list
+    ]);
+    
+    setIsRegisterChildOpen(false);
+    resetRegistrationForm();
+
+  } catch (error) {
+    console.error('Registration failed:', error);
+    setError(
+      language === 'en' 
+        ? `Registration failed: ${error.message}` 
+        : `فشل التسجيل: ${error.message}`
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const handleDeleteRegistration = async (childId: string, childName: string) => {
+  if (!confirm(
+    language === 'en'
+      ? `Are you sure you want to delete the registration for ${childName}?`
+      : `هل أنت متأكد من حذف تسجيل ${childName}؟`
+  )) {
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const response = await fetch('/api/payments/delete-registration', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ childId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.error || `HTTP error! status: ${response.status}`);
+    }
+
+    // Remove the deleted child from the local state
+    setChildren(prevChildren => prevChildren.filter(child => child.id !== childId));
+
+    // Show success message
+    alert(
+      language === 'en'
+        ? 'Registration deleted successfully'
+        : 'تم حذف التسجيل بنجاح'
+    );
+  } catch (error) {
+    console.error('Delete failed:', error);
+    alert(
+      language === 'en'
+        ? `Failed to delete registration: ${error.message}`
+        : `فشل حذف التسجيل: ${error.message}`
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const resetRegistrationForm = () => {
+  setSelectedChildName('');
+  setSelectedParentId('');
+  setTotalAmount(0);
+  setRegistrationType('');
+};
+
+const fetchPayments = async () => {
+  try {
+    const response = await fetch('/api/payments/children');
+    if (!response.ok) throw new Error('Failed to fetch payments');
+    const data = await response.json();
+    setChildren(data);
+  } catch (error) {
+    console.error('Failed to fetch payments:', error);
+  }
+};
+
+
+const RegisterChildDialog = () => (
+  <Dialog open={isRegisterChildOpen} onOpenChange={setIsRegisterChildOpen}>
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>
+          {language === 'en' ? 'Register Child' : 'تسجيل طفل'}
+        </DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleRegisterChild} className="space-y-4 mt-4">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            {language === 'en' ? 'Select Child' : 'اختر الطفل'}
+          </label>
+          <select
+            className="w-full p-2 border rounded-md"
+            value={`${selectedChildName}|${selectedParentId}`}
+            onChange={(e) => {
+              const [name, parentId] = e.target.value.split('|');
+              setSelectedChildName(name);
+              setSelectedParentId(parentId);
+            }}
+            required
+          >
+            <option value="">
+              {language === 'en' ? 'Select a child' : 'اختر طفلاً'}
+            </option>
+            {availableChildren.map((child) => (
+              <option 
+                key={child.id} 
+                value={`${child.name}|${child.parentId}`}
+                className={child.isRegistered ? 'text-blue-600' : ''}
+              >
+                {child.name} 
+                {child.isRegistered ? (
+                  language === 'en' 
+                    ? ` (Already registered - ${child.registrationType?.toLowerCase()})` 
+                    : ` (مسجل مسبقاً - ${
+                        child.registrationType === 'DAILY' ? 'يومي' :
+                        child.registrationType === 'MONTHLY' ? 'شهري' :
+                        'سنوي'
+                      })`
+                ) : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            {language === 'en' ? 'Total Amount' : 'المبلغ الإجمالي'}
+          </label>
+          <Input
+            type="number"
+            value={totalAmount}
+            onChange={(e) => setTotalAmount(Number(e.target.value))}
+            required
+            min="0"
+            step="0.01"
+            className="w-full"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            {language === 'en' ? 'Registration Type' : 'نوع التسجيل'}
+          </label>
+          <select
+            className="w-full p-2 border rounded-md"
+            value={registrationType}
+            onChange={(e) => setRegistrationType(e.target.value as RegistrationType)}
+            required
+          >
+            <option value="">
+              {language === 'en' ? 'Select registration type' : 'اختر نوع التسجيل'}
+            </option>
+            <option value="DAILY">{language === 'en' ? 'Daily' : 'يومي'}</option>
+            <option value="MONTHLY">{language === 'en' ? 'Monthly' : 'شهري'}</option>
+            <option value="YEARLY">{language === 'en' ? 'Yearly' : 'سنوي'}</option>
+          </select>
+        </div>
+
+        <DialogFooter>
+          <Button 
+            type="submit" 
+            className="bg-blue-500 hover:bg-blue-600"
+            disabled={isLoading}
+          >
+            {isLoading 
+              ? (language === 'en' ? 'Registering...' : 'جاري التسجيل...')
+              : (language === 'en' ? 'Register' : 'تسجيل')
+            }
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
+);
 
   useEffect(() => {
     const checkLockStatus = async () => {
@@ -470,30 +730,135 @@ const pt = protectionTranslations[language];
   return (
     <div className="space-y-6" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* Search and Title */}
-      <div className="flex justify-between items-center">
-  <h2 className="text-2xl font-bold text-gray-800">
-    {language === 'en' ? 'Payments Management' : 'إدارة المدفوعات'}
-  </h2>
-  <div className="flex items-center space-x-4">
-    <div className="relative w-64">
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-      <Input
-        placeholder={language === 'en' ? 'Search child...' : 'بحث عن طفل...'}
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="pl-10"
-      />
-    </div>
-    <Button
-  onClick={() => setIsLocked(true)}
-  size="sm"
-  className="bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl px-4 py-2 transform transition-all duration-200 hover:scale-105 flex items-center gap-2"
->
-  <Lock className="h-4 w-4" />
-  {pt.lockPage}
-</Button>
-  </div>
-</div>
+{/* Header */}
+<div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">
+          {language === 'en' ? 'Payments Management' : 'إدارة المدفوعات'}
+        </h2>
+        <div className="flex items-center space-x-4">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder={language === 'en' ? 'Search child...' : 'بحث عن طفل...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            onClick={handleRegisterClick}
+            className="bg-green-500 hover:bg-green-600 text-white"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            {language === 'en' ? 'Register Child' : 'تسجيل طفل'}
+          </Button>
+          <Button
+            onClick={() => setIsLocked(true)}
+            size="sm"
+            className="bg-gradient-to-r from-red-500 to-pink-500 text-white"
+          >
+            <Lock className="h-4 w-4 mr-2" />
+            {language === 'en' ? 'Lock Page' : 'قفل الصفحة'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Registration Dialog */}
+      <Dialog open={isRegisterChildOpen} onOpenChange={setIsRegisterChildOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {language === 'en' ? 'Register Child' : 'تسجيل طفل'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleRegisterChild} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === 'en' ? 'Select Child' : 'اختر الطفل'}
+              </label>
+              <select
+                className="w-full p-2 border rounded-md"
+                value={`${selectedChildName}|${selectedParentId}`}
+                onChange={(e) => {
+                  const [name, parentId] = e.target.value.split('|');
+                  setSelectedChildName(name);
+                  setSelectedParentId(parentId);
+                }}
+                required
+              >
+                <option value="">
+                  {language === 'en' ? 'Select a child' : 'اختر طفلاً'}
+                </option>
+                {availableChildren.map((child) => (
+                  <option 
+                    key={child.id} 
+                    value={`${child.name}|${child.parentId}`}
+                  >
+                    {child.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === 'en' ? 'Total Amount' : 'المبلغ الإجمالي'}
+              </label>
+              <Input
+                type="number"
+                value={totalAmount}
+                onChange={(e) => setTotalAmount(Number(e.target.value))}
+                required
+                min="0"
+                step="0.01"
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {language === 'en' ? 'Registration Type' : 'نوع التسجيل'}
+              </label>
+              <select
+                className="w-full p-2 border rounded-md"
+                value={registrationType}
+                onChange={(e) => setRegistrationType(e.target.value as 'DAILY' | 'MONTHLY' | 'YEARLY')}
+                required
+              >
+                <option value="">
+                  {language === 'en' ? 'Select registration type' : 'اختر نوع التسجيل'}
+                </option>
+                <option value="DAILY">{language === 'en' ? 'Daily' : 'يومي'}</option>
+                <option value="MONTHLY">{language === 'en' ? 'Monthly' : 'شهري'}</option>
+                <option value="YEARLY">{language === 'en' ? 'Yearly' : 'سنوي'}</option>
+              </select>
+            </div>
+
+            <DialogFooter>
+              <Button 
+                type="submit" 
+                className="bg-blue-500 hover:bg-blue-600"
+                disabled={isLoading}
+              >
+                {isLoading 
+                  ? (language === 'en' ? 'Registering...' : 'جاري التسجيل...')
+                  : (language === 'en' ? 'Register' : 'تسجيل')
+                }
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registration Type Income Statistics */}
+      <RegistrationStats children={children} language={language} />
 
       
 
@@ -590,9 +955,19 @@ const pt = protectionTranslations[language];
                         {language === 'en' ? 'Details' : 'التفاصيل'}
                       </Button>
                     )}
-                  </div>
-                </TableCell>
-              </TableRow>
+                 <Button
+        onClick={() => handleDeleteRegistration(child.id, child.name)}
+        size="sm"
+        variant="destructive"
+        className="bg-red-500 hover:bg-red-600"
+        disabled={isLoading}
+      >
+        <Trash2 className="h-4 w-4 mr-1" />
+        {language === 'en' ? 'Delete' : 'حذف'}
+      </Button>
+    </div>
+  </TableCell>
+</TableRow>
             ))}
           </TableBody>
         </Table>
