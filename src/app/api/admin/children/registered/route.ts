@@ -1,11 +1,13 @@
+// /app/api/admin/children/registered/route.ts
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    // Fetch only children that haven't been registered yet
     const children = await prisma.child.findMany({
       where: {
         registrationType: null  // Only get children without a registration type

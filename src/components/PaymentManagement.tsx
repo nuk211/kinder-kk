@@ -175,6 +175,7 @@ useEffect(() => {
 }, [isLocked]);
 
 // Handle child registration
+// Handle child registration
 const handleRegisterChild = async (e: React.FormEvent) => {
   e.preventDefault();
   setIsLoading(true);
@@ -186,8 +187,6 @@ const handleRegisterChild = async (e: React.FormEvent) => {
     totalAmount: Number(totalAmount),
     registrationType: registrationType,
   };
-
-  console.log('Sending registration data:', registrationData);  // Debug log
 
   try {
     const response = await fetch('/api/payments/register-child', {
@@ -204,12 +203,17 @@ const handleRegisterChild = async (e: React.FormEvent) => {
     }
 
     const data = await response.json();
-    console.log('Registration successful:', data);  // Debug log
+    console.log('Registration successful:', data);
 
-    // Refresh data and reset form
-    await fetchAvailableChildren();
+    // Refresh both lists
+    await Promise.all([
+      fetchAvailableChildren(),  // Refresh unregistered children list
+      fetchChildren()            // Refresh registered children list
+    ]);
+    
     setIsRegisterChildOpen(false);
     resetRegistrationForm();
+
   } catch (error) {
     console.error('Registration failed:', error);
     setError(

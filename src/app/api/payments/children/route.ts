@@ -1,7 +1,10 @@
+// /app/api/payments/children/route.ts
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -24,7 +27,7 @@ export async function GET() {
           orderBy: {
             createdAt: 'desc'
           },
-          take: 1,  // Get only the most recent fee
+          take: 1,
         },
         payments: true,
       },
