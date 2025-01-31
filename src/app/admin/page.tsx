@@ -8,11 +8,12 @@ import ChildrenList from '@/components/ChildrenList';
 import ParentList from '@/components/ParentList';
 import AttendanceManagement from '@/components/AttendanceManagement';
 import { NotificationMenu } from '@/components/NotificationMenu';
-import { Globe, LayoutDashboard, Users, Calendar, UserSquare2, UserMinus, CreditCard, TrendingUp, Trash2 } from 'lucide-react';
+import { Globe, LayoutDashboard, Users, Calendar, UserSquare2, UserMinus, CreditCard, TrendingUp, Trash2, QrCode } from 'lucide-react';
 import PickupManagement from '@/components/PickupManagement';
 import PaymentManagement from '@/components/PaymentManagement';
 import ProfitManagement from '@/components/ProfitManagement';
 import MonthlyReport from '@/components/MonthlyReport';
+import ChildQRGenerator from '@/components/ChildQRGenerator';
 
 interface Notification {
   id: string;
@@ -88,6 +89,15 @@ const translations = {
     pending: "Pending",
     overdue: "Overdue",
     searchChild: "Search Child",
+    qrCodes: "QR Codes",
+    generateQRCodes: "Generate QR Codes",
+    printQRCode: "Print QR Code",
+    qrCodeFor: "QR Code for",
+    parent: "Parent",
+    contact: "Contact",
+    refresh: "Refresh",
+    loadingQRCodes: "Loading QR Codes...",
+    errorLoadingQRCodes: "Error loading QR codes",
   },
   ar: {
     dashboard: "لوحة التحكم",
@@ -144,6 +154,15 @@ const translations = {
     pending: "معلق",
     overdue: "متأخر",
     searchChild: "بحث عن طفل",
+    qrCodes: "رموز QR",
+    generateQRCodes: "إنشاء رموز QR",
+    printQRCode: "طباعة رمز QR",
+    qrCodeFor: "رمز QR ل",
+    parent: "ولي الأمر",
+    contact: "رقم الاتصال",
+    refresh: "تحديث",
+    loadingQRCodes: "جاري تحميل رموز QR...",
+    errorLoadingQRCodes: "خطأ في تحميل رموز QR",
   }
 };
 
@@ -377,26 +396,42 @@ export default function AdminPage() {
   {t.profit}
 </button>
 
+
+<button
+  onClick={() => setActiveTab('qrcodes')}
+  className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
+    activeTab === 'qrcodes'
+      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+      : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
+  }`}
+>
+  <QrCode className="h-5 w-5" />
+  {t.qrCodes}
+</button>
+
+
+
               
               </div>
 
             </div>
 
             <div className="mt-6">
-            {activeTab === 'pickup' && <PickupManagement language={language} />}
-            {activeTab === 'payments' && <PaymentManagement language={language} />}
-            {activeTab === 'profit' && <ProfitManagement language={language} />}
-              {activeTab === 'dashboard' && (
-                <AdminDashboard 
-                  presentChildren={presentChildren}
-                  onNotificationUpdate={setNotifications}
-                  language={language}
-                />
-              )}
-              {activeTab === 'children' && <ChildrenList language={language} />}
-              {activeTab === 'parents' && <ParentList language={language} />}
-              {activeTab === 'attendance' && <AttendanceManagement language={language} />}
-            </div>
+  {activeTab === 'pickup' && <PickupManagement language={language} />}
+  {activeTab === 'payments' && <PaymentManagement language={language} />}
+  {activeTab === 'profit' && <ProfitManagement language={language} />}
+  {activeTab === 'dashboard' && (
+    <AdminDashboard 
+      presentChildren={presentChildren}
+      onNotificationUpdate={setNotifications}
+      language={language}
+    />
+  )}
+  {activeTab === 'children' && <ChildrenList language={language} />}
+  {activeTab === 'parents' && <ParentList language={language} />}
+  {activeTab === 'attendance' && <AttendanceManagement language={language} />}
+  {activeTab === 'qrcodes' && <ChildQRGenerator language={language} translations={t} />}
+</div>
           </div>
         </Card>
       </Layout>

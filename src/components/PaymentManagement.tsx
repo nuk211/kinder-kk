@@ -30,14 +30,15 @@ interface PaymentManagementProps {
 }
 
 interface Child {
-  id: string;
+  id: string;           // Combined ID for the registration
+  childId: string;      // Original child ID
+  parentId: string;     // Parent ID
   name: string;
   totalAmount: number;
   paidAmount: number;
   remainingAmount: number;
-  registrationType?: 'DAILY' | 'MONTHLY' | 'YEARLY';
-  isRegistered?: boolean;
-  parentId: string;
+  registrationType: 'DAILY' | 'MONTHLY' | 'YEARLY';
+  createdAt: string;
 }
 
 interface Payment {
@@ -101,12 +102,14 @@ const protectionTranslations = {
 };
 
 const PaymentManagement: React.FC<PaymentManagementProps> = ({ language }) => {
-  // States
+  // Protection states
   const [isLocked, setIsLocked] = useState(true);
-const [password, setPassword] = useState('');
-const [protectionError, setProtectionError] = useState('');
-const [showPassword, setShowPassword] = useState(false);
-const pt = protectionTranslations[language];
+  const [password, setPassword] = useState('');
+  const [protectionError, setProtectionError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const pt = protectionTranslations[language];
+
+  // Main states
   const [children, setChildren] = useState<Child[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChild, setSelectedChild] = useState<string>('');
@@ -121,10 +124,11 @@ const pt = protectionTranslations[language];
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentDate, setPaymentDate] = useState<string>(() => {
     const now = new Date();
-    now.setHours(now.getHours() + 3); // Add 3 hours to current time
+    now.setHours(now.getHours() + 3);
     return now.toISOString().slice(0, 16);
   });
-  // New states for registration
+
+  // Registration states
   const [isRegisterChildOpen, setIsRegisterChildOpen] = useState(false);
   const [selectedChildName, setSelectedChildName] = useState('');
   const [selectedParentId, setSelectedParentId] = useState('');
@@ -159,13 +163,18 @@ const pt = protectionTranslations[language];
 const fetchChildren = async () => {
   try {
     const response = await fetch('/api/payments/children');
-    if (!response.ok) throw new Error('Failed to fetch children');
+    if (!response.ok) {
+      throw new Error('Failed to fetch children');
+    }
     const data = await response.json();
+    console.log('Fetched registrations:', data); // Debug log
     setChildren(data);
   } catch (error) {
     console.error('Failed to fetch children data:', error);
   }
 };
+
+
 
 useEffect(() => {
   if (!isLocked) {
@@ -181,9 +190,19 @@ const handleRegisterChild = async (e: React.FormEvent) => {
   setIsLoading(true);
   setError('');
 
+  // Get the selected child
+  const selectedChild = availableChildren.find(child => 
+    child.name === selectedChildName && child.parentId === selectedParentId
+  );
+
+  if (!selectedChild) {
+    setError(language === 'en' ? 'Please select a child' : 'الرجاء اختيار طفل');
+    setIsLoading(false);
+    return;
+  }
+
   const registrationData = {
-    childName: selectedChildName,
-    parentId: selectedParentId,
+    childId: selectedChild.id,
     totalAmount: Number(totalAmount),
     registrationType: registrationType,
   };
@@ -205,12 +224,10 @@ const handleRegisterChild = async (e: React.FormEvent) => {
     const data = await response.json();
     console.log('Registration successful:', data);
 
-    // Refresh both lists
-    await Promise.all([
-      fetchAvailableChildren(),  // Refresh unregistered children list
-      fetchChildren()            // Refresh registered children list
-    ]);
+    // Fetch updated data immediately
+    await fetchChildren();
     
+    // Close dialog and reset form
     setIsRegisterChildOpen(false);
     resetRegistrationForm();
 
@@ -226,11 +243,13 @@ const handleRegisterChild = async (e: React.FormEvent) => {
   }
 };
 
-const handleDeleteRegistration = async (childId: string, childName: string) => {
+const handleDeleteRegistration = async (registration: any) => {
+  console.log('Deleting registration:', registration);
+
   if (!confirm(
     language === 'en'
-      ? `Are you sure you want to delete the registration for ${childName}?`
-      : `هل أنت متأكد من حذف تسجيل ${childName}؟`
+      ? `Are you sure you want to delete this registration for ${registration.name}?`
+      : `هل أنت متأكد من حذف هذا التسجيل لـ ${registration.name}؟`
   )) {
     return;
   }
@@ -242,16 +261,20 @@ const handleDeleteRegistration = async (childId: string, childName: string) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ childId }),
+      body: JSON.stringify({ 
+        feeId: registration.feeId 
+      }),
     });
 
+    const data = await response.json();
+    console.log('Delete response:', data);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.error || `HTTP error! status: ${response.status}`);
+      throw new Error(data.error || 'Failed to delete registration');
     }
 
-    // Remove the deleted child from the local state
-    setChildren(prevChildren => prevChildren.filter(child => child.id !== childId));
+    // Remove the deleted registration from the local state
+    setChildren(prevChildren => prevChildren.filter(reg => reg.id !== registration.id));
 
     // Show success message
     alert(
@@ -292,106 +315,107 @@ const fetchPayments = async () => {
 
 const RegisterChildDialog = () => (
   <Dialog open={isRegisterChildOpen} onOpenChange={setIsRegisterChildOpen}>
-    <DialogContent className="sm:max-w-[425px]">
-      <DialogHeader>
-        <DialogTitle>
-          {language === 'en' ? 'Register Child' : 'تسجيل طفل'}
-        </DialogTitle>
-      </DialogHeader>
-      <form onSubmit={handleRegisterChild} className="space-y-4 mt-4">
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        
-        <div className="space-y-2">
-          <label className="text-sm font-medium">
-            {language === 'en' ? 'Select Child' : 'اختر الطفل'}
-          </label>
-          <select
-            className="w-full p-2 border rounded-md"
-            value={`${selectedChildName}|${selectedParentId}`}
-            onChange={(e) => {
-              const [name, parentId] = e.target.value.split('|');
-              setSelectedChildName(name);
-              setSelectedParentId(parentId);
-            }}
-            required
-          >
-            <option value="">
-              {language === 'en' ? 'Select a child' : 'اختر طفلاً'}
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>
+        {language === 'en' ? 'Register Child' : 'تسجيل طفل'}
+      </DialogTitle>
+    </DialogHeader>
+
+    <form onSubmit={handleRegisterChild} className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">
+          {language === 'en' ? 'Select Child' : 'اختر الطفل'}
+        </label>
+        <select
+          className="w-full p-2 border rounded-md"
+          value={`${selectedChildName}|${selectedParentId}`}
+          onChange={(e) => {
+            const [name, parentId] = e.target.value.split('|');
+            setSelectedChildName(name);
+            setSelectedParentId(parentId);
+          }}
+          required
+        >
+          <option value="">
+            {language === 'en' ? 'Select a child' : 'اختر طفلاً'}
+          </option>
+          {availableChildren.map((child) => (
+            <option 
+              key={child.id} 
+              value={`${child.name}|${child.parentId}`}
+              className={child.registrationType ? 'text-blue-600' : ''}
+            >
+              {child.name}
+              {child.registrationType && (
+                language === 'en' 
+                  ? ` (Current: ${child.registrationType.toLowerCase()})` 
+                  : ` (الحالي: ${
+                      child.registrationType === 'DAILY' ? 'يومي' :
+                      child.registrationType === 'MONTHLY' ? 'شهري' :
+                      'سنوي'
+                    })`
+              )}
             </option>
-            {availableChildren.map((child) => (
-              <option 
-                key={child.id} 
-                value={`${child.name}|${child.parentId}`}
-                className={child.isRegistered ? 'text-blue-600' : ''}
-              >
-                {child.name} 
-                {child.isRegistered ? (
-                  language === 'en' 
-                    ? ` (Already registered - ${child.registrationType?.toLowerCase()})` 
-                    : ` (مسجل مسبقاً - ${
-                        child.registrationType === 'DAILY' ? 'يومي' :
-                        child.registrationType === 'MONTHLY' ? 'شهري' :
-                        'سنوي'
-                      })`
-                ) : ''}
-              </option>
-            ))}
-          </select>
-        </div>
+          ))}
+        </select>
+      </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">
-            {language === 'en' ? 'Total Amount' : 'المبلغ الإجمالي'}
-          </label>
-          <Input
-            type="number"
-            value={totalAmount}
-            onChange={(e) => setTotalAmount(Number(e.target.value))}
-            required
-            min="0"
-            step="0.01"
-            className="w-full"
-          />
-        </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">
+          {language === 'en' ? 'Total Amount' : 'المبلغ الإجمالي'}
+        </label>
+        <Input
+          type="number"
+          value={totalAmount}
+          onChange={(e) => setTotalAmount(Number(e.target.value))}
+          required
+          min="0"
+          step="0.01"
+          className="w-full"
+        />
+      </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">
-            {language === 'en' ? 'Registration Type' : 'نوع التسجيل'}
-          </label>
-          <select
-            className="w-full p-2 border rounded-md"
-            value={registrationType}
-            onChange={(e) => setRegistrationType(e.target.value as RegistrationType)}
-            required
-          >
-            <option value="">
-              {language === 'en' ? 'Select registration type' : 'اختر نوع التسجيل'}
-            </option>
-            <option value="DAILY">{language === 'en' ? 'Daily' : 'يومي'}</option>
-            <option value="MONTHLY">{language === 'en' ? 'Monthly' : 'شهري'}</option>
-            <option value="YEARLY">{language === 'en' ? 'Yearly' : 'سنوي'}</option>
-          </select>
-        </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">
+          {language === 'en' ? 'Registration Type' : 'نوع التسجيل'}
+        </label>
+        <select
+          className="w-full p-2 border rounded-md"
+          value={registrationType}
+          onChange={(e) => setRegistrationType(e.target.value as 'DAILY' | 'MONTHLY' | 'YEARLY')}
+          required
+        >
+          <option value="">
+            {language === 'en' ? 'Select registration type' : 'اختر نوع التسجيل'}
+          </option>
+          <option value="DAILY">{language === 'en' ? 'Daily' : 'يومي'}</option>
+          <option value="MONTHLY">{language === 'en' ? 'Monthly' : 'شهري'}</option>
+          <option value="YEARLY">{language === 'en' ? 'Yearly' : 'سنوي'}</option>
+        </select>
+      </div>
 
-        <DialogFooter>
-          <Button 
-            type="submit" 
-            className="bg-blue-500 hover:bg-blue-600"
-            disabled={isLoading}
-          >
-            {isLoading 
-              ? (language === 'en' ? 'Registering...' : 'جاري التسجيل...')
-              : (language === 'en' ? 'Register' : 'تسجيل')
-            }
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+      <DialogFooter>
+        <Button 
+          type="submit" 
+          className="bg-blue-500 hover:bg-blue-600"
+          disabled={isLoading}
+        >
+          {isLoading 
+            ? (language === 'en' ? 'Registering...' : 'جاري التسجيل...')
+            : (language === 'en' ? 'Register' : 'تسجيل')
+          }
+        </Button>
+      </DialogFooter>
+    </form>
+  </DialogContent>
+</Dialog>
 );
 
   useEffect(() => {
@@ -423,6 +447,8 @@ const RegisterChildDialog = () => (
   
     checkLockStatus();
   }, []);
+
+  
 
   const fetchPaymentDetails = async (childId: string) => {
     console.log('Starting to fetch details for child:', childId);
@@ -672,35 +698,63 @@ const RegisterChildDialog = () => (
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Starting payment submission');
+    
     setIsLoading(true);
     setError('');
     
     try {
+      const registration = getSelectedChildData();
+      console.log('Found registration for payment:', registration);
+  
+      if (!registration) {
+        throw new Error(language === 'en' ? 'Registration not found' : 'لم يتم العثور على التسجيل');
+      }
+  
+      const paymentData = {
+        childId: registration.childId, // Use childId from registration
+        amount: paymentAmount,
+        paymentDate: new Date(paymentDate).toISOString()
+      };
+  
+      console.log('Sending payment data:', paymentData);
+  
       const response = await fetch('/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          childId: selectedChild,
-          amount: paymentAmount,
-          paymentDate: new Date(paymentDate).toISOString(),
-        }),
+        body: JSON.stringify(paymentData),
       });
   
+      const data = await response.json();
+      console.log('Payment response:', data);
+  
       if (!response.ok) {
-        throw new Error('Failed to add payment');
+        throw new Error(data.error || 'Failed to add payment');
       }
   
-      await fetchChildren();
+      // Refresh the data
+      await Promise.all([
+        fetchChildren(),
+        registration.childId && fetchPaymentDetails(registration.childId)
+      ]);
+  
+      // Close dialog and reset form
       setIsAddPaymentOpen(false);
       setPaymentAmount(0);
       const now = new Date();
+      now.setHours(now.getHours() + 3);
       setPaymentDate(now.toISOString().slice(0, 16));
       setSelectedChild('');
+  
     } catch (error) {
-      console.error('Failed to add payment:', error);
-      setError(language === 'en' ? 'Failed to add payment' : 'فشل في إضافة الدفعة');
+      console.error('Payment error:', error);
+      setError(
+        language === 'en' 
+          ? `Failed to add payment: ${error.message}` 
+          : `فشل في إضافة الدفعة: ${error.message}`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -715,14 +769,24 @@ const RegisterChildDialog = () => (
   };
 
   const openAddPaymentDialog = (childId: string) => {
-    const now = new Date();
-    now.setHours(now.getHours() + 3); // Add 3 hours to current time
+    console.log('Opening payment dialog for child:', childId);
     
+    const now = new Date();
+    now.setHours(now.getHours() + 3);
+  
+    // Set the childId directly
     setSelectedChild(childId);
     setPaymentAmount(0);
     setPaymentDate(now.toISOString().slice(0, 16));
     setError('');
     setIsAddPaymentOpen(true);
+  };
+
+  const getSelectedChildData = () => {
+    // Find the registration with matching childId
+    const registration = children.find(reg => reg.childId === selectedChild);
+    console.log('Selected registration:', registration);
+    return registration;
   };
 
   const selectedChildData = children.find(child => child.id === selectedChild);
@@ -876,100 +940,79 @@ const RegisterChildDialog = () => (
       </TableRow>
     </TableHeader>
     <TableBody>
-      {children.filter(child =>
-        child.name.toLowerCase().includes(searchQuery.toLowerCase())
-      ).map((child) => (
-        <TableRow key={child.id}>
-          <TableCell className="font-medium">{child.name}</TableCell>
-          <TableCell>
-            <span className={`px-2 py-1 rounded-full text-xs
-              ${child.registrationType === 'DAILY' 
-                ? 'bg-blue-100 text-blue-800' 
-                : child.registrationType === 'MONTHLY'
-                ? 'bg-green-100 text-green-800'
-                : child.registrationType === 'YEARLY'
-                ? 'bg-purple-100 text-purple-800'
-                : 'bg-gray-100 text-gray-800'
-              }`}
+    {children
+  .filter(child => child.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  .map((registration) => (
+    <TableRow key={registration.id}>
+        <TableCell className="font-medium">{registration.name}</TableCell>
+        <TableCell>
+          <span className={`px-2 py-1 rounded-full text-xs
+            ${registration.registrationType === 'DAILY' 
+              ? 'bg-blue-100 text-blue-800' 
+              : registration.registrationType === 'MONTHLY'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-purple-100 text-purple-800'
+            }`}
+          >
+            {registration.registrationType 
+              ? (language === 'en' 
+                  ? registration.registrationType.toLowerCase()
+                  : registration.registrationType === 'DAILY' 
+                    ? 'يومي' 
+                    : registration.registrationType === 'MONTHLY'
+                      ? 'شهري'
+                      : 'سنوي')
+              : language === 'en' ? 'Not set' : 'غير محدد'
+            }
+          </span>
+        </TableCell>
+        <TableCell className="text-right">{formatCurrency(registration.totalAmount)}</TableCell>
+        <TableCell className="text-right">{formatCurrency(registration.paidAmount)}</TableCell>
+        <TableCell className="text-right">{formatCurrency(registration.remainingAmount)}</TableCell>
+        <TableCell>
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => openSetAmountDialog(registration.childId)}
+              size="sm"
+              className="bg-blue-500 hover:bg-blue-600"
             >
-              {child.registrationType 
-                ? (language === 'en' 
-                    ? child.registrationType.toLowerCase()
-                    : child.registrationType === 'DAILY' 
-                      ? 'يومي' 
-                      : child.registrationType === 'MONTHLY'
-                        ? 'شهري'
-                        : 'سنوي')
-                : language === 'en' ? 'Not set' : 'غير محدد'
-              }
-            </span>
-          </TableCell>
-          <TableCell className="text-right">{formatCurrency(child.totalAmount)}</TableCell>
-          <TableCell className="text-right">{formatCurrency(child.paidAmount)}</TableCell>
-          <TableCell className="text-right">{formatCurrency(child.remainingAmount)}</TableCell>
-          <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      onClick={() => openSetAmountDialog(child.id)}
-                      size="sm"
-                      className="bg-blue-500 hover:bg-blue-600"
-                    >
-                      <Settings className="h-4 w-4 mr-1" />
-                      {language === 'en' ? 'Set Total' : 'تعيين المبلغ'}
-                    </Button>
-                    <Button
-                      onClick={() => openAddPaymentDialog(child.id)}
-                      size="sm"
-                      className="bg-pink-500 hover:bg-pink-600"
-                      disabled={child.totalAmount === 0}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      {language === 'en' ? 'Add Payment' : 'إضافة دفعة'}
-                    </Button>
-                    {(child.totalAmount > 0 || child.paidAmount > 0) && (
-                      <Button
-                        onClick={() => {
-                          if (confirm(
-                            language === 'en' 
-                              ? `Are you sure you want to reset all payment data for ${child.name}?` 
-                              : `هل أنت متأكد من إعادة تعيين جميع بيانات الدفع لـ ${child.name}؟`
-                          )) {
-                            handleResetPayments(child.id);
-                          }
-                        }}
-                        size="sm"
-                        variant="destructive"
-                        className="bg-red-500 hover:bg-red-600"
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        {language === 'en' ? 'Reset' : 'إعادة تعيين'}
-                      </Button>
-                    )}
-                    {child.paidAmount > 0 && (
-                      <Button
-                        onClick={() => fetchPaymentDetails(child.id)}
-                        size="sm"
-                        className="bg-purple-500 hover:bg-purple-600"
-                      >
-                        <FileText className="h-4 w-4 mr-1" />
-                        {language === 'en' ? 'Details' : 'التفاصيل'}
-                      </Button>
-                    )}
-                 <Button
-        onClick={() => handleDeleteRegistration(child.id, child.name)}
-        size="sm"
-        variant="destructive"
-        className="bg-red-500 hover:bg-red-600"
-        disabled={isLoading}
-      >
-        <Trash2 className="h-4 w-4 mr-1" />
-        {language === 'en' ? 'Delete' : 'حذف'}
-      </Button>
-    </div>
-  </TableCell>
-</TableRow>
-            ))}
-          </TableBody>
+              <Settings className="h-4 w-4 mr-1" />
+              {language === 'en' ? 'Set Total' : 'تعيين المبلغ'}
+            </Button>
+            <Button
+              onClick={() => openAddPaymentDialog(registration.childId)}
+              size="sm"
+              className="bg-pink-500 hover:bg-pink-600"
+              disabled={registration.totalAmount === 0}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              {language === 'en' ? 'Add Payment' : 'إضافة دفعة'}
+            </Button>
+            {registration.paidAmount > 0 && (
+              <Button
+                onClick={() => fetchPaymentDetails(registration.childId)}
+                size="sm"
+                className="bg-purple-500 hover:bg-purple-600"
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                {language === 'en' ? 'Details' : 'التفاصيل'}
+              </Button>
+            )}
+            <Button
+  onClick={() => handleDeleteRegistration(registration)}
+  size="sm"
+  variant="destructive"
+  className="bg-red-500 hover:bg-red-600"
+  disabled={isLoading}
+>
+  <Trash2 className="h-4 w-4 mr-1" />
+  {language === 'en' ? 'Delete' : 'حذف'}
+</Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    ))}
+</TableBody>
         </Table>
       </Card>
 
@@ -1042,13 +1085,14 @@ const RegisterChildDialog = () => (
   </DialogContent>
 </Dialog>
 
+
 {/* Add Payment Dialog */}
 <Dialog open={isAddPaymentOpen} onOpenChange={setIsAddPaymentOpen}>
   <DialogContent className="sm:max-w-[425px]">
     <DialogHeader>
       <DialogTitle>
         {language === 'en' ? 'Add New Payment' : 'إضافة دفعة جديدة'}
-        {selectedChildData && ` - ${selectedChildData.name}`}
+        {getSelectedChildData()?.name && ` - ${getSelectedChildData()?.name}`}
       </DialogTitle>
     </DialogHeader>
     <form onSubmit={handleAddPayment} className="space-y-4 mt-4">
@@ -1067,15 +1111,15 @@ const RegisterChildDialog = () => (
           onChange={(e) => setPaymentAmount(Number(e.target.value))}
           required
           min="0"
-          max={selectedChildData?.remainingAmount || 0}
+          max={getSelectedChildData()?.remainingAmount || 0}
           step="0.01"
           className="w-full"
         />
-        {selectedChildData && (
+        {getSelectedChildData() && (
           <p className="text-sm text-gray-500">
             {language === 'en' 
-              ? `Remaining amount: ${selectedChildData.remainingAmount}`
-              : `المبلغ المتبقي: ${selectedChildData.remainingAmount}`
+              ? `Remaining amount: ${getSelectedChildData().remainingAmount}`
+              : `المبلغ المتبقي: ${getSelectedChildData().remainingAmount}`
             }
           </p>
         )}
@@ -1096,7 +1140,12 @@ const RegisterChildDialog = () => (
         <Button 
           type="submit" 
           className="bg-pink-500 hover:bg-pink-600"
-          disabled={isLoading || !selectedChildData?.remainingAmount}
+          disabled={
+            isLoading || 
+            !getSelectedChildData() || 
+            paymentAmount <= 0 || 
+            paymentAmount > (getSelectedChildData()?.remainingAmount || 0)
+          }
         >
           {isLoading 
             ? (language === 'en' ? 'Adding...' : 'جاري الإضافة...')
@@ -1118,33 +1167,7 @@ const RegisterChildDialog = () => (
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="text-sm text-blue-700">
-                {language === 'en' ? 'Total Amount' : 'المبلغ الإجمالي'}
-              </h4>
-              <p className="text-xl font-bold text-blue-900">
-                {selectedChildData?.totalAmount || 0}
-              </p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h4 className="text-sm text-green-700">
-                {language === 'en' ? 'Paid Amount' : 'المبلغ المدفوع'}
-              </h4>
-              <p className="text-xl font-bold text-green-900">
-                {selectedChildData?.paidAmount || 0}
-              </p>
-            </div>
-            <div className="bg-pink-50 p-4 rounded-lg">
-              <h4 className="text-sm text-pink-700">
-                {language === 'en' ? 'Remaining' : 'المتبقي'}
-              </h4>
-              <p className="text-xl font-bold text-pink-900">
-                {selectedChildData?.remainingAmount || 0}
-              </p>
-            </div>
-          </div>
+          
 
 {/* Payments History Table */}
 <div className="border rounded-lg">

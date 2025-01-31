@@ -1,3 +1,4 @@
+// /app/api/payments/delete-registration/route.ts
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
@@ -5,54 +6,52 @@ const prisma = new PrismaClient();
 
 export async function DELETE(request: Request) {
   try {
-    const { childId } = await request.json();
+    const body = await request.json();
+    console.log('Delete request body:', body);
 
-    if (!childId) {
+    const { feeId } = body;
+
+    if (!feeId) {
       return NextResponse.json(
-        { error: 'Child ID is required' },
+        { error: 'Fee ID is required' },
         { status: 400 }
       );
     }
 
-    // Get the child with all related records
-    const child = await prisma.child.findUnique({
-      where: { id: childId },
-      include: {
-        fees: true,
-        payments: true,
-      },
-    });
-
-    if (!child) {
-      return NextResponse.json(
-        { error: 'Child not found' },
-        { status: 404 }
-      );
-    }
-
-    // Delete all related records in a transaction
+    // Delete the fee and related records in a transaction
     await prisma.$transaction(async (tx) => {
-      // Delete payments
+      // Get the fee first to get registration type
+      const fee = await tx.fee.findUnique({
+        where: { id: feeId }
+      });
+
+      if (!fee) {
+        throw new Error('Fee not found');
+      }
+
+      // Delete related payments
       await tx.payment.deleteMany({
-        where: { childId }
+        where: {
+          childId: fee.childId,
+          registrationType: fee.registrationType
+        }
       });
 
-      // Delete fees
-      await tx.fee.deleteMany({
-        where: { childId }
-      });
-
-      // Delete this child record
-      await tx.child.delete({
-        where: { id: childId }
+      // Delete the fee
+      await tx.fee.delete({
+        where: { id: feeId }
       });
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: 'Registration deleted successfully'
+    });
+
   } catch (error) {
     console.error('Delete error:', error);
     return NextResponse.json(
-      { error: 'Failed to process delete operation' },
+      { error: error.message || 'Failed to delete registration' },
       { status: 500 }
     );
   }

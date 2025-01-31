@@ -11,10 +11,12 @@ export async function middleware(req: NextRequest) {
     if (!token) {
       return NextResponse.redirect(new URL('/login', url));
     }
-    if (token.role !== 'PARENT') {
+    if (token.role !== 'MISS') {
       return NextResponse.redirect(new URL('/login', url));
     }
   }
+  console.log(token);
+
 
   // If trying to access /admin but not signed in or not admin
   if (url.pathname.startsWith('/admin')) {

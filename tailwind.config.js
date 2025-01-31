@@ -11,9 +11,12 @@ module.exports = {
 	],
 	theme: {
     	extend: {
-			fontFamily: {
-				sans: ['var(--font-quicksand)', ...fontFamily.sans],
-			},
+    		fontFamily: {
+    			sans: [
+    				'var(--font-quicksand)',
+                    ...fontFamily.sans
+                ]
+    		},
     		colors: {
     			primary: {
     				'50': '#f0f9ff',

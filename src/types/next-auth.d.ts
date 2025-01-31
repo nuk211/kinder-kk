@@ -1,7 +1,7 @@
 // types/next-auth.d.ts
 import { DefaultSession } from "next-auth"
 
-type UserRole = "ADMIN" | "PARENT"
+type UserRole = "ADMIN" | "PARENT" | "TEACHER"
 
 declare module "next-auth" {
   interface Session {

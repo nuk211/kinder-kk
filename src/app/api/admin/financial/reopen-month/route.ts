@@ -23,6 +23,10 @@ export async function POST(request: Request) {
             year,
           },
         },
+        include: {
+          paymentRecords: true,
+          expenseRecords: true,
+        }
       });
 
       if (!monthlyRecord) {
@@ -34,14 +38,17 @@ export async function POST(request: Request) {
       }
 
       // Delete all associated records first
-      await Promise.all([
-        tx.monthlyPaymentRecord.deleteMany({
+      if (monthlyRecord.paymentRecords.length > 0) {
+        await tx.monthlyPaymentRecord.deleteMany({
           where: { recordId: monthlyRecord.id }
-        }),
-        tx.monthlyExpenseRecord.deleteMany({
+        });
+      }
+
+      if (monthlyRecord.expenseRecords.length > 0) {
+        await tx.monthlyExpenseRecord.deleteMany({
           where: { recordId: monthlyRecord.id }
-        })
-      ]);
+        });
+      }
 
       // Delete the monthly record
       await tx.monthlyFinancialRecord.delete({

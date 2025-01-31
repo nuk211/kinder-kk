@@ -9,11 +9,6 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const children = await prisma.child.findMany({
-      where: {
-        registrationType: {
-          not: null  // Only get children with active registrations
-        }
-      },
       include: {
         parent: {
           select: {
@@ -27,7 +22,6 @@ export async function GET() {
           orderBy: {
             createdAt: 'desc'
           },
-          take: 1,
         },
         payments: true,
       },
@@ -36,26 +30,41 @@ export async function GET() {
       },
     });
 
-    // Process the data to include financial information
-    const processedChildren = children.map(child => {
-      const latestFee = child.fees[0];
-      const totalAmount = latestFee?.totalAmount || 0;
-      const paidAmount = child.payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const processedRegistrations = children.flatMap(child => {
+      return child.fees.map(fee => {
+        const relevantPayments = child.payments.filter(
+          payment => payment.registrationType === fee.registrationType
+        );
+        
+        const paidAmount = relevantPayments.reduce(
+          (sum, payment) => sum + payment.amount, 
+          0
+        );
 
-      return {
-        id: child.id,
-        name: child.name,
-        parent: child.parent,
-        registrationType: child.registrationType,
-        status: child.status,
-        totalAmount,
-        paidAmount,
-        remainingAmount: totalAmount - paidAmount,
-        updatedAt: child.updatedAt,
-      };
+        return {
+          id: `${child.id}-${fee.id}`, // Combined ID
+          childId: child.id,
+          feeId: fee.id,  // Add the fee ID separately
+          name: child.name,
+          parent: child.parent,
+          registrationType: fee.registrationType,
+          status: child.status,
+          totalAmount: fee.totalAmount,
+          paidAmount: paidAmount,
+          remainingAmount: fee.totalAmount - paidAmount,
+          startDate: fee.startDate,
+          endDate: fee.endDate,
+          createdAt: fee.createdAt,
+          updatedAt: fee.updatedAt
+        };
+      });
     });
 
-    return NextResponse.json(processedChildren);
+    const sortedRegistrations = processedRegistrations.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    return NextResponse.json(sortedRegistrations);
   } catch (error) {
     console.error('Failed to fetch children:', error);
     return NextResponse.json(

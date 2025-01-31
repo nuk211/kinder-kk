@@ -771,12 +771,24 @@ const renderIncomeBreakdown = (monthData: MonthlyData) => (
         <Card key={monthKey} className="border-2 border-pink-200 hover:border-pink-300 transition-all duration-200">
           <CardHeader>
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <CardTitle>
+            <div className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2">
                   {new Date(monthKey + '-01').toLocaleDateString(
                     language === 'ar' ? 'ar-IQ' : 'en-US',
                     { month: 'long', year: 'numeric' }
                   )}
+                  <span 
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      isMonthClosed(monthKey)
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}
+                  >
+                    {isMonthClosed(monthKey)
+                      ? (language === 'en' ? 'Closed' : 'مغلق')
+                      : (language === 'en' ? 'Open' : 'مفتوح')
+                    }
+                  </span>
                 </CardTitle>
               </div>
               

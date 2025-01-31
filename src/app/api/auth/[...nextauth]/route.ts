@@ -1,5 +1,4 @@
 //@ts-nocheck
-
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
@@ -12,6 +11,7 @@ export const authOptions = {
       credentials: {
         email: { label: "Email", type: "email", placeholder: "your-email@example.com" },
         password: { label: "Password", type: "password", placeholder: "••••••••" },
+        role: { label: "Role", type: "text", placeholder: "Role" }, // Optional: if you want role-specific login
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -20,18 +20,26 @@ export const authOptions = {
 
         try {
           const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
+            where: { 
+              email: credentials.email,
+            },
             select: {
               id: true,
               email: true,
               name: true,
               password: true,
               role: true,
+              phoneNumber: true,
             },
           });
 
           if (!user) {
             throw new Error("No user found with this email");
+          }
+
+          // Optional: Role-specific validation
+          if (credentials.role && user.role !== credentials.role) {
+            throw new Error(`Invalid login for ${credentials.role.toLowerCase()} account`);
           }
 
           let isPasswordValid = false;
@@ -59,6 +67,7 @@ export const authOptions = {
             email: user.email,
             name: user.name,
             role: user.role,
+            phoneNumber: user.phoneNumber,
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -72,6 +81,7 @@ export const authOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.phoneNumber = user.phoneNumber;
       }
       return token;
     },
@@ -79,6 +89,7 @@ export const authOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.phoneNumber = token.phoneNumber;
       }
       return session;
     },

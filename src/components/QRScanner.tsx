@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 interface QRScannerProps {
-  onScan: (result: string) => void;
+  onScan: (result: string, responseData?: any) => void;  // Modified to accept response data
   onError?: (error: Error) => void;
   qrboxSize?: number;
   fps?: number;
@@ -28,65 +28,64 @@ const QRScanner: React.FC<QRScannerProps> = ({
   const isProcessing = useRef<boolean>(false);
 
   const handleScanSuccess = useCallback(async (decodedText: string) => {
-    // Prevent multiple simultaneous processing
-    console.log('Scanned QR Code:', decodedText); // Line 1 inside handleScanSuccess
-
     if (!isScanning.current || isProcessing.current) return;
-    
+  
+    console.log('Scan detected:', decodedText);
     try {
-      // Set processing flag to prevent multiple calls
       isProcessing.current = true;
-      // Stop scanning immediately
       isScanning.current = false;
       
-      console.log('Scanned QR code:', decodedText);
-      
-      // Stop the scanner
-      if (scannerRef.current) {
+      if (scannerRef.current?.isScanning) {
         await scannerRef.current.pause(true);
       }
-      console.log('Sending to /api/qr/validate:', decodedText); // Just before fetch call
-
+  
       const response = await fetch('/api/qr/validate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ qrCode: decodedText }),
       });
   
       const data = await response.json();
-      console.log('Validation response:', data); // After `const data = await response.json();`
-
+      
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to validate QR code');
+        throw new Error(data.error || 'Scan failed');
       }
-  
-      console.log('Scan response:', data);
-      onScan(decodedText);
+
+      console.log('API response:', data);
+      // Show browser alert
+      window.alert(`Successfully scanned ${data.data.children[0].name}\nStatus: ${data.data.children[0].status}`);
       
-      // Clear scanner
-      if (scannerRef.current) {
-        await scannerRef.current.clear();
-      }
-  
-      // Show success message and redirect
-      alert(data.message);
-      window.location.href = '/';
+      // Pass both the QR code text and the response data to parent
+      onScan(decodedText, data);
       
-    } catch (error) {
-      console.error('Error handling scan result:', error);
-      alert(error instanceof Error ? error.message : 'Failed to process QR code');
-      // Reset flags to allow another scan attempt
-      isScanning.current = true;
+      // Reset scanner immediately after successful processing
       isProcessing.current = false;
+      isScanning.current = true;
       
-      // Optionally restart scanner
-      if (scannerRef.current) {
+      if (scannerRef.current && !scannerRef.current.isScanning) {
+        console.log('Resuming scanner...');
+        await scannerRef.current.resume();
+      }
+  
+    } catch (error) {
+      console.error('Scan processing failed:', error);
+      isProcessing.current = false;
+      isScanning.current = true;
+      if (scannerRef.current && !scannerRef.current.isScanning) {
+        await scannerRef.current.resume();
+      }
+      alert(error instanceof Error ? error.message : 'Scan failed');
+    } finally {
+      isProcessing.current = false;
+      isScanning.current = true;
+      if (scannerRef.current && !scannerRef.current.isScanning) {
         await scannerRef.current.resume();
       }
     }
-  }, [onScan]);
+}, [onScan])
+
+  
+  
 
   const handleScanFailure = useCallback((errorMessage: string | QrScanError) => {
     if (typeof errorMessage === 'object' && errorMessage.name === 'NotFoundException') {
