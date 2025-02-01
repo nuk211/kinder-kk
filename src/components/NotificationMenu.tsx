@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
+
 interface Notification {
   id: string;
   message: string;
@@ -101,12 +102,20 @@ export const NotificationMenu: React.FC<NotificationMenuProps> = ({ className, l
 
   useEffect(() => {
     // Initial fetch of notifications
+    console.log('NotificationMenu mounted - Setting up SSE and initial fetch');
     fetchNotifications();
 
     // Set up SSE for real-time updates
+    console.log('Setting up SSE connection...');
     const sse = new EventSource('/api/notifications/sse');
-    
+
+    sse.onopen = () => {
+      console.log('SSE connection established successfully');
+      setError(null);
+    };
+
     sse.onmessage = (event) => {
+      console.log('SSE message received:', event.data);
       try {
         const newNotifications = JSON.parse(event.data);
         setNotifications(newNotifications);

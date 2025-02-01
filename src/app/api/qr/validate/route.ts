@@ -189,7 +189,30 @@ export async function POST(request: NextRequest) {
           currentTime
         );
       }
+      console.log('\n5. Creating admin notifications...');
+      const adminUsers = await tx.user.findMany({
+        where: {
+          role: Role.ADMIN
+        },
+        select: { id: true }
+      });
 
+      console.log('Found admins:', adminUsers);
+
+      // Create notifications for each admin
+      await Promise.all(adminUsers.map(admin => 
+        tx.notification.create({
+          data: {
+            userId: admin.id,
+            type: childStatus === ChildStatus.PRESENT ? 'CHECK_IN' : 'PICK_UP',
+            message: `${student.name} ${childStatus === ChildStatus.PRESENT ? 'تم تسجيل حضوره' : 'تم تسجيل انصرافه'}`,
+            read: false,
+            timestamp: currentTime,
+            childId: student.id,
+            parentId: student.parent.id
+          }
+        })
+      ));
       console.log('\n6. Verifying update...');
       const updatedStudent = await tx.child.findUnique({
         where: { id: student.id },
