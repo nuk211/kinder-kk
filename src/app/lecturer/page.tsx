@@ -181,14 +181,14 @@ export default function LecturerPage() {
   };
 
   return (
-    <main className="min-h-screen relative overflow-hidden bg-blue-50" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <main className="min-h-screen relative overflow-hidden bg-yellow-50" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* Language Switcher */}
       <button
         onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
         className={`absolute top-4 ${language === 'ar' ? 'left-4' : 'right-4'} bg-white/80 p-2 rounded-full hover:bg-white transition-all duration-200 z-10 flex items-center gap-2 shadow-md`}
       >
-        <Globe className="h-5 w-5 text-purple-500" />
-        <span className="text-sm font-medium text-purple-500">
+        <Globe className="h-5 w-5 text-orange-500" />
+        <span className="text-sm font-medium text-orange-500">
           {t.switchLanguage}
         </span>
       </button>
@@ -196,10 +196,10 @@ export default function LecturerPage() {
       {/* Background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -inset-[10px] opacity-30">
-          <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-          <div className="absolute -bottom-8 right-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-6000"></div>
+          <div className="absolute top-0 -left-4 w-72 h-72 bg-orange-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute -bottom-8 right-20 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-6000"></div>
         </div>
 
         {/* Decorative Elements */}
@@ -230,7 +230,7 @@ export default function LecturerPage() {
         {(scanStatus.message || scanStatus.loading) && (
           <Alert 
             variant={scanStatus.success ? "default" : "destructive"} 
-            className="mb-6 bg-white/90 backdrop-blur-sm border-4 border-purple-200 rounded-2xl animate-fade-up relative"
+            className="mb-6 bg-white/90 backdrop-blur-sm border-4 border-orange-200 rounded-2xl animate-fade-up relative"
           >
             <Button
               variant="ghost"
@@ -243,7 +243,7 @@ export default function LecturerPage() {
             
             {scanStatus.loading ? (
               <div className="flex items-center space-x-2 ">
-                <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
                 <span>{t.loadingMessage}</span>
               </div>
             ) : (
@@ -255,8 +255,8 @@ export default function LecturerPage() {
                   {scanStatus.success ? (
                     <>
                       {scanStatus.children?.map((child, index) => (
-                        <div key={index} className="mb-2 p-3 bg-blue-50/50 rounded-xl border-2 border-blue-200">
-                          <p className="font-medium text-blue-800">
+                        <div key={index} className="mb-2 p-3 bg-yellow-50/50 rounded-xl border-2 border-yellow-200">
+                          <p className="font-medium text-yellow-800">
                             {child.name} {getStatusMessage(child.status)} 🌟
                           </p>
                           <p className="text-sm text-gray-600">
@@ -266,7 +266,7 @@ export default function LecturerPage() {
                       ))}
                       <Button
                         onClick={handleDismissAlert}
-                        className="mt-4 bg-purple-500 hover:bg-purple-600"
+                        className="mt-4 bg-orange-500 hover:bg-orange-600"
                       >
                         {t.scanAnother}
                       </Button>
@@ -280,7 +280,7 @@ export default function LecturerPage() {
           </Alert>
         )}
 
-        <div className="bg-white/90 backdrop-blur-lg p-8 rounded-3xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border-4 border-purple-200 animate-fade-up">
+        <div className="bg-white/90 backdrop-blur-lg p-8 rounded-3xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border-4 border-orange-200 animate-fade-up">
           <div className="relative">
           
 <QRScanner
@@ -318,22 +318,22 @@ export default function LecturerPage() {
     });
   }}
 />
-            <div className="absolute inset-0 border-8 border-dashed border-blue-300 rounded-lg pointer-events-none animate-pulse"></div>
+            <div className="absolute inset-0 border-8 border-dashed border-yellow-300 rounded-lg pointer-events-none animate-pulse"></div>
           </div>
           <p className="text-center text-gray-600 mt-6  flex items-center justify-center gap-2">
-            <Scan className="w-5 h-5 text-purple-500" />
+            <Scan className="w-5 h-5 text-orange-500" />
             {t.scannerGuide}
           </p>
         </div>
 
         {/* Recent Scans Section */}
-        <div className="mt-8 bg-white/90 backdrop-blur-sm p-6 rounded-2xl border-4 border-purple-200">
-          <h2 className="text-xl font-bold mb-4 text-purple-700 ">{t.lastScanned}</h2>
+        <div className="mt-8 bg-white/90 backdrop-blur-sm p-6 rounded-2xl border-4 border-orange-200">
+          <h2 className="text-xl font-bold mb-4 text-orange-700 ">{t.lastScanned}</h2>
           {recentScans.length > 0 ? (
             <div className="space-y-3">
               {recentScans.map((scan, index) => (
-                <div key={index} className="p-3 bg-purple-50 rounded-xl border-2 border-purple-100">
-                  <p className="font-medium text-purple-800">
+                <div key={index} className="p-3 bg-orange-50 rounded-xl border-2 border-orange-100">
+                  <p className="font-medium text-orange-800">
                     {scan.name} {getStatusMessage(scan.status)}
                   </p>
                   <p className="text-sm text-gray-600">

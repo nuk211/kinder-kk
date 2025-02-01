@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       const student = await tx.child.findFirst({
         where: { qrCode: qrCode },
         include: {
-          parent: true, // Include parent to get email
+          parent: true,
           attendanceRecords: {
             where: {
               date: {
@@ -121,10 +121,35 @@ export async function POST(request: NextRequest) {
         throw new Error('Student not found');
       }
 
+      // Add cooldown check
+      const currentTime = new Date();
+      const lastUpdate = await tx.attendance.findFirst({
+        where: { childId: student.id },
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true }
+      });
+
+      if (lastUpdate?.updatedAt) {
+        const timeSinceLastUpdate = currentTime.getTime() - lastUpdate.updatedAt.getTime();
+        if (timeSinceLastUpdate < 1000) { // 1000ms = 1 second
+          console.log('Cooldown active - ignoring duplicate scan');
+          // Return the current status without making any changes
+          return {
+            student: {
+              id: student.id,
+              name: student.name,
+              status: student.status
+            },
+            status: student.status,
+            message: 'No change',
+            timestamp: currentTime,
+          };
+        }
+      }
+
       console.log('\n3. Current student status:', student.status);
       console.log('Existing attendance records:', student.attendanceRecords);
 
-      const currentTime = new Date();
       const existingAttendance = student.attendanceRecords[0];
       let attendanceStatus;
       let childStatus;
@@ -189,7 +214,8 @@ export async function POST(request: NextRequest) {
           currentTime
         );
       }
-      console.log('\n5. Creating admin notifications...');
+
+      console.log('\n6. Creating admin notifications...');
       const adminUsers = await tx.user.findMany({
         where: {
           role: Role.ADMIN
@@ -213,7 +239,8 @@ export async function POST(request: NextRequest) {
           }
         })
       ));
-      console.log('\n6. Verifying update...');
+
+      console.log('\n7. Verifying update...');
       const updatedStudent = await tx.child.findUnique({
         where: { id: student.id },
         select: { id: true, name: true, status: true },
@@ -228,7 +255,6 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    console.log('\n7. Sending response with status:', result.student?.status);
     return NextResponse.json({
       success: true,
       message: 'Attendance recorded successfully',
