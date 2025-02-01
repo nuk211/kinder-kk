@@ -394,7 +394,7 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
 
                 <Button 
                   type="submit"
-                  className="w-full bg-gradient-to-r from-pink-500 to-blue-500 text-white rounded-xl px-6 py-3 transform transition-all duration-200 hover:scale-105"
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl px-6 py-3 transform transition-all duration-200 hover:scale-105"
                   disabled={!password}
                 >
                   {pt.unlockPage}
@@ -596,7 +596,7 @@ const ProfitManagement: React.FC<ProfitManagementProps> = ({ language }) => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-gradient-to-r from-pink-500 to-blue-500 text-white rounded-xl px-6 py-3 transform transition-all duration-200 hover:scale-105 flex items-center gap-2"
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl px-6 py-3 transform transition-all duration-200 hover:scale-105 flex items-center gap-2"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

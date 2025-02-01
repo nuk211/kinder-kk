@@ -219,12 +219,12 @@ export default function LecturerPage() {
 
       <div className="relative container mx-auto p-4 max-w-2xl">
         <div className="text-center mb-8 animate-fade-up">
-          <h1 className="text-4xl font-bold mb-2 font-comic">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-blue-500">
+          <h1 className="text-4xl font-bold mb-2 ">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-orange-500">
               {t.welcome}
             </span>
           </h1>
-          <p className="text-gray-600 font-comic">{t.subtitle}</p>
+          <p className="text-gray-600 ">{t.subtitle}</p>
         </div>
         
         {(scanStatus.message || scanStatus.loading) && (
@@ -242,16 +242,16 @@ export default function LecturerPage() {
             </Button>
             
             {scanStatus.loading ? (
-              <div className="flex items-center space-x-2 font-comic">
+              <div className="flex items-center space-x-2 ">
                 <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
                 <span>{t.loadingMessage}</span>
               </div>
             ) : (
               <>
-                <AlertTitle className="font-comic text-lg">
+                <AlertTitle className=" text-lg">
                   {scanStatus.success ? t.success : t.error}
                 </AlertTitle>
-                <AlertDescription className="font-comic">
+                <AlertDescription className="">
                   {scanStatus.success ? (
                     <>
                       {scanStatus.children?.map((child, index) => (
@@ -320,7 +320,7 @@ export default function LecturerPage() {
 />
             <div className="absolute inset-0 border-8 border-dashed border-blue-300 rounded-lg pointer-events-none animate-pulse"></div>
           </div>
-          <p className="text-center text-gray-600 mt-6 font-comic flex items-center justify-center gap-2">
+          <p className="text-center text-gray-600 mt-6  flex items-center justify-center gap-2">
             <Scan className="w-5 h-5 text-purple-500" />
             {t.scannerGuide}
           </p>
@@ -328,7 +328,7 @@ export default function LecturerPage() {
 
         {/* Recent Scans Section */}
         <div className="mt-8 bg-white/90 backdrop-blur-sm p-6 rounded-2xl border-4 border-purple-200">
-          <h2 className="text-xl font-bold mb-4 text-purple-700 font-comic">{t.lastScanned}</h2>
+          <h2 className="text-xl font-bold mb-4 text-purple-700 ">{t.lastScanned}</h2>
           {recentScans.length > 0 ? (
             <div className="space-y-3">
               {recentScans.map((scan, index) => (
@@ -343,7 +343,7 @@ export default function LecturerPage() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center font-comic">{t.noScansYet}</p>
+            <p className="text-gray-500 text-center ">{t.noScansYet}</p>
           )}
         </div>
         
@@ -382,7 +382,7 @@ export default function LecturerPage() {
         .animation-delay-6000 {
           animation-delay: 6s;
         }
-        .font-comic {
+        . {
           font-family: 'Comic Sans MS', cursive, sans-serif;
         }
       `}</style>

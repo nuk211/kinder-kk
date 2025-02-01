@@ -45,7 +45,7 @@ const Navbar: React.FC = () => {
                   priority
                 />
               </div>
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-pink-500">
+              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-orange-500">
   SunWay Kindergarten
 </span>
             </Link>
@@ -58,7 +58,7 @@ const Navbar: React.FC = () => {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="text-gray-600 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="text-gray-600 hover:text-orange-500 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   {item.name}
                 </Link>
@@ -66,14 +66,14 @@ const Navbar: React.FC = () => {
               {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
-                  className="text-gray-600 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="text-gray-600 hover:text-orange-500 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Logout
                 </button>
               ) : (
                 <Link
                   href="/login"
-                  className="text-gray-600 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="text-gray-600 hover:text-orange-500 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Login
                 </Link>
@@ -85,7 +85,7 @@ const Navbar: React.FC = () => {
           <div className="flex items-center sm:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-purple-600"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-orange-500"
               aria-expanded={isOpen}
               aria-label="Toggle navigation menu"
             >
@@ -103,7 +103,7 @@ const Navbar: React.FC = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-gray-600 hover:text-purple-600 block px-3 py-2 rounded-md text-base font-medium"
+                className="text-gray-600 hover:text-orange-500 block px-3 py-2 rounded-md text-base font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 {item.name}
@@ -115,14 +115,14 @@ const Navbar: React.FC = () => {
                   handleLogout();
                   setIsOpen(false);
                 }}
-                className="text-gray-600 hover:text-purple-600 block w-full text-left px-3 py-2 rounded-md text-base font-medium"
+                className="text-gray-600 hover:text-orange-500 block w-full text-left px-3 py-2 rounded-md text-base font-medium"
               >
                 Logout
               </button>
             ) : (
               <Link
                 href="/login"
-                className="text-gray-600 hover:text-purple-600 block px-3 py-2 rounded-md text-base font-medium"
+                className="text-gray-600 hover:text-orange-500 block px-3 py-2 rounded-md text-base font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 Login

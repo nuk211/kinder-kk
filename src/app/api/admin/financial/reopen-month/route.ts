@@ -1,74 +1,118 @@
 // src/app/api/admin/financial/reopen-month/route.ts
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
     const { month, year } = await request.json();
+    const monthNum = Number(month);
+    const yearNum = Number(year);
 
-    if (!month || !year) {
-      return NextResponse.json(
-        { error: 'Month and year are required' },
-        { status: 400 }
-      );
-    }
+    console.log('Attempting to reopen month:', { monthNum, yearNum });
 
-    // Start a transaction
+    // Start transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Find the monthly record
-      const monthlyRecord = await tx.monthlyFinancialRecord.findUnique({
+      // First verify the current state
+      const currentRecord = await tx.monthlyFinancialRecord.findFirst({
         where: {
-          month_year: {
-            month,
-            year,
-          },
+          month: monthNum,
+          year: yearNum
         },
-        include: {
-          paymentRecords: true,
-          expenseRecords: true,
+        select: {
+          id: true,
+          isClosed: true,
+          closedAt: true
         }
       });
 
-      if (!monthlyRecord) {
-        throw new Error('Monthly record not found');
+      console.log('Found current record:', currentRecord);
+
+      if (!currentRecord) {
+        throw new Error(`No record found for month ${monthNum}, year ${yearNum}`);
       }
 
-      if (!monthlyRecord.isClosed) {
-        throw new Error('Month is already open');
+      if (!currentRecord.isClosed) {
+        console.log('Month is already open:', currentRecord);
+        throw new Error(`Month ${monthNum}, year ${yearNum} is already open`);
       }
 
-      // Delete all associated records first
-      if (monthlyRecord.paymentRecords.length > 0) {
-        await tx.monthlyPaymentRecord.deleteMany({
-          where: { recordId: monthlyRecord.id }
-        });
-      }
+      console.log('Proceeding with reopening month...');
 
-      if (monthlyRecord.expenseRecords.length > 0) {
-        await tx.monthlyExpenseRecord.deleteMany({
-          where: { recordId: monthlyRecord.id }
-        });
-      }
-
-      // Delete the monthly record
-      await tx.monthlyFinancialRecord.delete({
-        where: { id: monthlyRecord.id }
+      // Delete related records
+      await tx.monthlyPaymentRecord.deleteMany({
+        where: { recordId: currentRecord.id }
       });
 
-      return monthlyRecord;
+      await tx.monthlyExpenseRecord.deleteMany({
+        where: { recordId: currentRecord.id }
+      });
+
+      // Update the record with explicit timestamps
+      const now = new Date();
+      const updatedRecord = await tx.monthlyFinancialRecord.update({
+        where: { id: currentRecord.id },
+        data: {
+          isClosed: false,
+          closedAt: null,
+          updatedAt: now
+        }
+      });
+
+      console.log('Successfully updated record:', updatedRecord);
+
+      // Verify the update was successful
+      const verifiedRecord = await tx.monthlyFinancialRecord.findUnique({
+        where: { id: currentRecord.id }
+      });
+
+      if (verifiedRecord?.isClosed) {
+        throw new Error('Failed to reopen month: state did not update correctly');
+      }
+
+      return {
+        success: true,
+        record: verifiedRecord,
+        message: 'Month reopened successfully'
+      };
+    }, {
+      timeout: 10000,
+      isolationLevel: 'Serializable'
     });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Month reopened successfully',
-      data: result,
-    });
+    // Return success with cache control headers
+    return new NextResponse(
+      JSON.stringify({
+        success: true,
+        message: 'Month reopened successfully',
+        data: result
+      }), 
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      }
+    );
 
   } catch (error) {
-    console.error('Failed to reopen month:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to reopen month' },
-      { status: 500 }
+    console.error('Error in reopen-month:', error);
+    
+    // Return error with cache control headers
+    return new NextResponse(
+      JSON.stringify({ 
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reopen month'
+      }), 
+      {
+        status: error instanceof Error && error.message.includes('already open') ? 400 : 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      }
     );
   }
 }

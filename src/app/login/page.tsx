@@ -111,14 +111,14 @@ export default function LoginPage() {
   const t = translations[language];
 
   return (
-    <main className="min-h-screen relative overflow-hidden bg-blue-50"> {/* Changed from orange-50 */}
+    <main className="min-h-screen relative overflow-hidden bg-yellow-50"> {/* Changed from orange-50 */}
       {/* Language Switcher */}
       <button
         onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
         className="absolute top-4 right-4 bg-white/80 p-2 rounded-full hover:bg-white transition-all duration-200 z-10 flex items-center gap-2"
       >
-        <Globe className="h-5 w-5 text-pink-500" /> {/* Changed from gray-600 */}
-        <span className="text-sm font-medium text-pink-500"> {/* Changed from gray-600 */}
+        <Globe className="h-5 w-5 text-orange-500" /> {/* Changed from gray-600 */}
+        <span className="text-sm font-medium text-orange-500"> {/* Changed from gray-600 */}
           {language === 'en' ? translations.en.switchToArabic : translations.en.switchToEnglish}
         </span>
       </button>
@@ -126,11 +126,11 @@ export default function LoginPage() {
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -inset-[10px] opacity-30">
-          {/* Changed blob colors to pink and blue shades */}
-          <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-0 -right-4 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-          <div className="absolute -bottom-8 right-20 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-6000"></div>
+          {/* Changed blob colors to orange and yellow shades */}
+          <div className="absolute top-0 -left-4 w-72 h-72 bg-orange-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute -bottom-8 right-20 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-6000"></div>
         </div>
         
         {/* Keep decorative elements */}
@@ -139,32 +139,32 @@ export default function LoginPage() {
       <div className="relative flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md animate-fade-up">
           <div className="text-center mb-8 animate-fade-up">
-            <h1 className="text-4xl font-bold mb-2 font-comic">
+            <h1 className="text-4xl font-bold mb-2 ">
               {t.welcome}{" "}
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-pink-500">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-orange-500">
                 SunWay
               </span>
             </h1>
-            <p className="text-gray-600 font-comic">{t.subtitle}</p>
+            <p className="text-gray-600 ">{t.subtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} 
           
-            className={`bg-white/90 backdrop-blur-lg p-8 rounded-3xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border-4 border-pink-200 space-y-6 animate-fade-up hover:shadow-[0_0_25px_rgba(0,0,0,0.15)] transition-all duration-300 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+            className={`bg-white/90 backdrop-blur-lg p-8 rounded-3xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border-4 border-orange-200 space-y-6 animate-fade-up hover:shadow-[0_0_25px_rgba(0,0,0,0.15)] transition-all duration-300 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
             <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 font-comic">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 ">
                 {t.email}
               </label>
               <div className="relative group">
                 <div className={`absolute inset-y-0 ${language === 'ar' ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
-                  <Mail className="h-5 w-5 text-blue-400 group-hover:text-pink-500 transition-colors duration-200" />
+                  <Mail className="h-5 w-5 text-yellow-400 group-hover:text-orange-500 transition-colors duration-200" />
                 </div>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`block w-full ${language === 'ar' ? 'pr-10 pl-3 text-right' : 'pl-10 pr-3 text-left'} py-3 bg-blue-50 border-2 border-blue-200 text-gray-900 rounded-2xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 hover:bg-blue-100/80 font-comic`}
+                  className={`block w-full ${language === 'ar' ? 'pr-10 pl-3 text-right' : 'pl-10 pr-3 text-left'} py-3 bg-yellow-50 border-2 border-yellow-200 text-gray-900 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 hover:bg-yellow-100/80 `}
                   required
                   placeholder={t.emailPlaceholder}
                   dir={language === 'ar' ? 'rtl' : 'ltr'}
@@ -173,19 +173,19 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 font-comic">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 ">
                 {t.password}
               </label>
               <div className="relative group">
                 <div className={`absolute inset-y-0 ${language === 'ar' ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
-                  <Lock className="h-5 w-5 text-blue-400 group-hover:text-pink-500 transition-colors duration-200" />
+                  <Lock className="h-5 w-5 text-yellow-400 group-hover:text-orange-500 transition-colors duration-200" />
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`block w-full ${language === 'ar' ? 'pr-10 pl-10 text-right' : 'pl-10 pr-10 text-left'} py-3 bg-blue-50 border-2 border-blue-200 text-gray-900 rounded-2xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 hover:bg-blue-100/80 font-comic`}
+                  className={`block w-full ${language === 'ar' ? 'pr-10 pl-10 text-right' : 'pl-10 pr-10 text-left'} py-3 bg-yellow-50 border-2 border-yellow-200 text-gray-900 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 hover:bg-yellow-100/80 `}
                   required
                   placeholder={t.passwordPlaceholder}
                   dir={language === 'ar' ? 'rtl' : 'ltr'}
@@ -196,16 +196,16 @@ export default function LoginPage() {
                   className={`absolute inset-y-0 ${language === 'ar' ? 'left-0 pl-3' : 'right-0 pr-3'} flex items-center`}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-blue-400 hover:text-pink-500 transition-colors duration-200" />
+                    <EyeOff className="h-5 w-5 text-yellow-400 hover:text-orange-500 transition-colors duration-200" />
                   ) : (
-                    <Eye className="h-5 w-5 text-blue-400 hover:text-pink-500 transition-colors duration-200" />
+                    <Eye className="h-5 w-5 text-yellow-400 hover:text-orange-500 transition-colors duration-200" />
                   )}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="bg-pink-50 text-pink-500 p-3 rounded-2xl text-sm animate-shake font-comic border-2 border-pink-200">
+              <div className="bg-orange-50 text-orange-500 p-3 rounded-2xl text-sm animate-shake  border-2 border-orange-200">
                 {error}
               </div>
             )}
@@ -213,7 +213,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-500 to-pink-500 text-white p-3 rounded-2xl hover:from-blue-600 hover:to-pink-600 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center font-comic text-lg"
+              className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-3 rounded-2xl hover:from-yellow-600 hover:to-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center  text-lg"
             >
               {isLoading ? (
                 <>

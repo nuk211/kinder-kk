@@ -622,19 +622,7 @@ const AdminDashboard = ({ language = 'en' }: AdminDashboardProps) => {
         </Card>
       </div>
 
-      {/* QR Code Section */}
-      <Card className="p-6">
-      <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-medium">{t.checkInQRCode}</h3>
-      
-    </div>
-        <div className="flex justify-center bg-white p-6 rounded-lg border-2 border-dashed">
-          <QRGenerator schoolId="sunway" size={300} />
-        </div>
-        <p className="text-center text-sm text-gray-500 mt-4">
-        {t.parentqr}
-        </p>
-      </Card>
+    
     </div>
   );
 };

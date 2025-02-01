@@ -32,6 +32,7 @@ interface PaymentManagementProps {
 interface Child {
   id: string;           // Combined ID for the registration
   childId: string;      // Original child ID
+  feeId: string;    // Add this field
   parentId: string;     // Parent ID
   name: string;
   totalAmount: number;
@@ -116,6 +117,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ language }) => {
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isSetAmountOpen, setIsSetAmountOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedFeeId, setSelectedFeeId] = useState<string>('');
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [registrationType, setRegistrationType] = useState<'DAILY' | 'MONTHLY' | 'YEARLY' | ''>('');
   const [totalAmount, setTotalAmount] = useState<number>(0);
@@ -190,7 +192,6 @@ const handleRegisterChild = async (e: React.FormEvent) => {
   setIsLoading(true);
   setError('');
 
-  // Get the selected child
   const selectedChild = availableChildren.find(child => 
     child.name === selectedChildName && child.parentId === selectedParentId
   );
@@ -216,18 +217,14 @@ const handleRegisterChild = async (e: React.FormEvent) => {
       body: JSON.stringify(registrationData),
     });
 
+    const data = await response.json();
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.error || `HTTP error! status: ${response.status}`);
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
     console.log('Registration successful:', data);
-
-    // Fetch updated data immediately
     await fetchChildren();
-    
-    // Close dialog and reset form
     setIsRegisterChildOpen(false);
     resetRegistrationForm();
 
@@ -243,7 +240,7 @@ const handleRegisterChild = async (e: React.FormEvent) => {
   }
 };
 
-const handleDeleteRegistration = async (registration: any) => {
+const handleDeleteRegistration = async (registration: Child) => {
   console.log('Deleting registration:', registration);
 
   if (!confirm(
@@ -262,7 +259,7 @@ const handleDeleteRegistration = async (registration: any) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ 
-        feeId: registration.feeId 
+        feeId: registration.feeId  // Use feeId instead of id
       }),
     });
 
@@ -273,10 +270,8 @@ const handleDeleteRegistration = async (registration: any) => {
       throw new Error(data.error || 'Failed to delete registration');
     }
 
-    // Remove the deleted registration from the local state
-    setChildren(prevChildren => prevChildren.filter(reg => reg.id !== registration.id));
+    setChildren(prevChildren => prevChildren.filter(reg => reg.feeId !== registration.feeId));
 
-    // Show success message
     alert(
       language === 'en'
         ? 'Registration deleted successfully'
@@ -630,7 +625,7 @@ const RegisterChildDialog = () => (
   
                 <Button 
                   type="submit"
-                  className="w-full bg-gradient-to-r from-pink-500 to-blue-500 text-white rounded-xl px-6 py-3 transform transition-all duration-200 hover:scale-105"
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl px-6 py-3 transform transition-all duration-200 hover:scale-105"
                   disabled={!password}
                 >
                   {pt.unlockPage}
@@ -704,7 +699,7 @@ const RegisterChildDialog = () => (
     setError('');
     
     try {
-      const registration = getSelectedChildData();
+      const registration = children.find(reg => reg.feeId === selectedFeeId);
       console.log('Found registration for payment:', registration);
   
       if (!registration) {
@@ -712,7 +707,8 @@ const RegisterChildDialog = () => (
       }
   
       const paymentData = {
-        childId: registration.childId, // Use childId from registration
+        childId: registration.childId,
+        feeId: registration.feeId,
         amount: paymentAmount,
         paymentDate: new Date(paymentDate).toISOString()
       };
@@ -737,7 +733,7 @@ const RegisterChildDialog = () => (
       // Refresh the data
       await Promise.all([
         fetchChildren(),
-        registration.childId && fetchPaymentDetails(registration.childId)
+        fetchPaymentDetails(registration.childId)
       ]);
   
       // Close dialog and reset form
@@ -747,6 +743,7 @@ const RegisterChildDialog = () => (
       now.setHours(now.getHours() + 3);
       setPaymentDate(now.toISOString().slice(0, 16));
       setSelectedChild('');
+      setSelectedFeeId(''); // Reset selectedFeeId
   
     } catch (error) {
       console.error('Payment error:', error);
@@ -768,14 +765,15 @@ const RegisterChildDialog = () => (
     setIsSetAmountOpen(true);
   };
 
-  const openAddPaymentDialog = (childId: string) => {
-    console.log('Opening payment dialog for child:', childId);
+  const openAddPaymentDialog = (childId: string, feeId: string) => {
+    console.log('Opening payment dialog for child:', childId, 'feeId:', feeId);
     
     const now = new Date();
     now.setHours(now.getHours() + 3);
   
-    // Set the childId directly
+    // Store both IDs
     setSelectedChild(childId);
+    setSelectedFeeId(feeId); // Add this state variable
     setPaymentAmount(0);
     setPaymentDate(now.toISOString().slice(0, 16));
     setError('');
@@ -783,10 +781,7 @@ const RegisterChildDialog = () => (
   };
 
   const getSelectedChildData = () => {
-    // Find the registration with matching childId
-    const registration = children.find(reg => reg.childId === selectedChild);
-    console.log('Selected registration:', registration);
-    return registration;
+    return children.find(reg => reg.feeId === selectedFeeId);
   };
 
   const selectedChildData = children.find(child => child.id === selectedChild);
@@ -943,75 +938,75 @@ const RegisterChildDialog = () => (
     {children
   .filter(child => child.name.toLowerCase().includes(searchQuery.toLowerCase()))
   .map((registration) => (
-    <TableRow key={registration.id}>
-        <TableCell className="font-medium">{registration.name}</TableCell>
-        <TableCell>
-          <span className={`px-2 py-1 rounded-full text-xs
-            ${registration.registrationType === 'DAILY' 
-              ? 'bg-blue-100 text-blue-800' 
-              : registration.registrationType === 'MONTHLY'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-purple-100 text-purple-800'
-            }`}
+    <TableRow key={registration.feeId}>  {/* Use feeId as the key */}
+      <TableCell className="font-medium">{registration.name}</TableCell>
+      <TableCell>
+        <span className={`px-2 py-1 rounded-full text-xs
+          ${registration.registrationType === 'DAILY' 
+            ? 'bg-blue-100 text-blue-800' 
+            : registration.registrationType === 'MONTHLY'
+            ? 'bg-green-100 text-green-800'
+            : 'bg-purple-100 text-purple-800'
+          }`}
+        >
+          {registration.registrationType 
+            ? (language === 'en' 
+                ? registration.registrationType.toLowerCase()
+                : registration.registrationType === 'DAILY' 
+                  ? 'يومي' 
+                  : registration.registrationType === 'MONTHLY'
+                    ? 'شهري'
+                    : 'سنوي')
+            : language === 'en' ? 'Not set' : 'غير محدد'
+          }
+        </span>
+      </TableCell>
+      <TableCell className="text-right">{formatCurrency(registration.totalAmount)}</TableCell>
+      <TableCell className="text-right">{formatCurrency(registration.paidAmount)}</TableCell>
+      <TableCell className="text-right">{formatCurrency(registration.remainingAmount)}</TableCell>
+      <TableCell>
+        <div className="flex space-x-2">
+          <Button
+            onClick={() => openSetAmountDialog(registration.childId)}
+            size="sm"
+            className="bg-blue-500 hover:bg-blue-600"
           >
-            {registration.registrationType 
-              ? (language === 'en' 
-                  ? registration.registrationType.toLowerCase()
-                  : registration.registrationType === 'DAILY' 
-                    ? 'يومي' 
-                    : registration.registrationType === 'MONTHLY'
-                      ? 'شهري'
-                      : 'سنوي')
-              : language === 'en' ? 'Not set' : 'غير محدد'
-            }
-          </span>
-        </TableCell>
-        <TableCell className="text-right">{formatCurrency(registration.totalAmount)}</TableCell>
-        <TableCell className="text-right">{formatCurrency(registration.paidAmount)}</TableCell>
-        <TableCell className="text-right">{formatCurrency(registration.remainingAmount)}</TableCell>
-        <TableCell>
-          <div className="flex space-x-2">
+            <Settings className="h-4 w-4 mr-1" />
+            {language === 'en' ? 'Set Total' : 'تعيين المبلغ'}
+          </Button>
+          <Button
+            onClick={() => openAddPaymentDialog(registration.childId, registration.feeId)} 
+            size="sm"
+            className="bg-pink-500 hover:bg-pink-600"
+            disabled={registration.totalAmount === 0}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            {language === 'en' ? 'Add Payment' : 'إضافة دفعة'}
+          </Button>
+          {registration.paidAmount > 0 && (
             <Button
-              onClick={() => openSetAmountDialog(registration.childId)}
+              onClick={() => fetchPaymentDetails(registration.childId)}
               size="sm"
-              className="bg-blue-500 hover:bg-blue-600"
+              className="bg-purple-500 hover:bg-purple-600"
             >
-              <Settings className="h-4 w-4 mr-1" />
-              {language === 'en' ? 'Set Total' : 'تعيين المبلغ'}
+              <FileText className="h-4 w-4 mr-1" />
+              {language === 'en' ? 'Details' : 'التفاصيل'}
             </Button>
-            <Button
-              onClick={() => openAddPaymentDialog(registration.childId)}
-              size="sm"
-              className="bg-pink-500 hover:bg-pink-600"
-              disabled={registration.totalAmount === 0}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              {language === 'en' ? 'Add Payment' : 'إضافة دفعة'}
-            </Button>
-            {registration.paidAmount > 0 && (
-              <Button
-                onClick={() => fetchPaymentDetails(registration.childId)}
-                size="sm"
-                className="bg-purple-500 hover:bg-purple-600"
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                {language === 'en' ? 'Details' : 'التفاصيل'}
-              </Button>
-            )}
-            <Button
-  onClick={() => handleDeleteRegistration(registration)}
-  size="sm"
-  variant="destructive"
-  className="bg-red-500 hover:bg-red-600"
-  disabled={isLoading}
->
-  <Trash2 className="h-4 w-4 mr-1" />
-  {language === 'en' ? 'Delete' : 'حذف'}
-</Button>
-          </div>
-        </TableCell>
-      </TableRow>
-    ))}
+          )}
+          <Button
+            onClick={() => handleDeleteRegistration(registration)}
+            size="sm"
+            variant="destructive"
+            className="bg-red-500 hover:bg-red-600"
+            disabled={isLoading}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            {language === 'en' ? 'Delete' : 'حذف'}
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  ))}
 </TableBody>
         </Table>
       </Card>

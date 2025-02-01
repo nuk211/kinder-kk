@@ -43,7 +43,7 @@ export default function NotFound() {
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <div className="space-y-6 animate-bounce-slow">
           <div className="text-9xl">🎈</div>
-          <h1 className="text-6xl font-bold font-comic bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-blue-500">
+          <h1 className="text-6xl font-bold font-comic bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-orange-5000">
             404
           </h1>
           <h2 className="text-3xl font-bold font-comic text-gray-700">{t.title}</h2>
@@ -52,7 +52,7 @@ export default function NotFound() {
 
         <Link
           href="/"
-          className="mt-8 inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-blue-500 text-white px-6 py-3 rounded-xl hover:from-pink-600 hover:to-blue-600 transition-all duration-200 font-comic transform hover:scale-105"
+          className="mt-8 inline-flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-5000 text-white px-6 py-3 rounded-xl hover:from-pink-600 hover:to-blue-600 transition-all duration-200 font-comic transform hover:scale-105"
         >
           <ArrowLeft className={`h-4 w-4 ${language === 'ar' ? 'rotate-180' : ''}`} />
           {t.homeButton}

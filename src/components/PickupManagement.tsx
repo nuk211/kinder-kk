@@ -160,7 +160,7 @@ const PickupManagement = ({ language = 'en' }: PickupManagementProps) => {
         <button
           onClick={handlePickup}
           disabled={!selectedChild || (pickupBy !== 'parent' && !pickupDetails.name)}
-          className="w-full bg-gradient-to-r from-pink-500 to-blue-500 text-white py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {t.completePickup}
         </button>

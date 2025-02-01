@@ -105,7 +105,9 @@ enum ExpenseType {
 model Payment {
   id               String    @id @default(uuid())
   childId          String
+  feeId            String?   // Make it optional with ?
   child            Child     @relation(fields: [childId], references: [id])
+  fee              Fee?      @relation(fields: [feeId], references: [id]) // Make relation optional
   amount           Float
   paymentDate      DateTime  @default(now())
   registrationType String?
@@ -114,6 +116,7 @@ model Payment {
   updatedAt        DateTime  @updatedAt
 
   @@index([childId])
+  @@index([feeId])
 }
 
 model Fee {
@@ -121,11 +124,12 @@ model Fee {
   childId          String
   child            Child            @relation(fields: [childId], references: [id])
   totalAmount      Float
-  registrationType RegistrationType // Using the enum type
+  registrationType RegistrationType
   description      String?
   startDate        DateTime
   endDate          DateTime
   installments     Installment[]
+  payments         Payment[]
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -215,11 +219,11 @@ model MonthlyFinancialRecord {
 
 model MonthlyPaymentRecord {
   id            String    @id @default(uuid())
-  monthlyRecord MonthlyFinancialRecord @relation(fields: [recordId], references: [id])
+  monthlyRecord MonthlyFinancialRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
   recordId      String
   
   childId       String
-  childName     String    // Stored to preserve history
+  childName     String
   amount        Float
   paymentDate   DateTime  
   paymentType   String    // DAILY, MONTHLY, YEARLY
@@ -231,8 +235,8 @@ model MonthlyPaymentRecord {
 }
 
 model MonthlyExpenseRecord {
-  id            String      @id @default(uuid())
-  monthlyRecord MonthlyFinancialRecord @relation(fields: [recordId], references: [id])
+  id            String    @id @default(uuid())
+  monthlyRecord MonthlyFinancialRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
   recordId      String
   
   amount        Float
@@ -240,8 +244,8 @@ model MonthlyExpenseRecord {
   expenseType   ExpenseType
   expenseDate   DateTime
   
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([recordId])
 }

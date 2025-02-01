@@ -1,61 +1,57 @@
-// src/app/api/payments/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log('Payment request body:', body);  // Debug log
-    const { childId, amount, paymentDate } = body;
+    console.log('Payment request body:', body);
+    const { childId, amount, paymentDate, feeId } = body;
 
-    if (!childId || !amount || !paymentDate) {
+    if (!childId || !amount || !paymentDate || !feeId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Get the child's latest fee to determine registration type
-    const child = await prisma.child.findUnique({
-      where: { id: childId },
+    // Get the specific fee record
+    const fee = await prisma.fee.findUnique({
+      where: { 
+        id: feeId,
+      },
       include: {
-        fees: {
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
-        }
+        child: true
       }
     });
 
-    if (!child) {
+    if (!fee) {
       return NextResponse.json(
-        { error: 'Child not found' },
+        { error: 'Fee record not found' },
         { status: 404 }
       );
     }
 
-    if (!child.fees || child.fees.length === 0) {
+    // Verify the fee belongs to the correct child
+    if (fee.childId !== childId) {
       return NextResponse.json(
-        { error: 'No active registration found for this child' },
+        { error: 'Fee record does not belong to the specified child' },
         { status: 400 }
       );
     }
-
-    const latestFee = child.fees[0];
 
     // Create the payment
     const payment = await prisma.payment.create({
       data: {
         childId,
+        feeId,
         amount: parseFloat(amount.toString()),
         paymentDate: new Date(paymentDate),
-        registrationType: latestFee.registrationType,
+        registrationType: fee.registrationType.toString(), // Convert enum to string
         receiptNumber: `RCP-${Date.now()}-${childId.slice(0, 4)}`,
       },
     });
 
-    console.log('Payment created:', payment);  // Debug log
+    console.log('Payment created:', payment);
 
     return NextResponse.json({
       success: true,

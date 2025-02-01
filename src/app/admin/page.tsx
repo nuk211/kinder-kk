@@ -291,10 +291,10 @@ export default function AdminPage() {
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -inset-[10px] opacity-30">
-          <div className="absolute top-0 -left-4 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-          <div className="absolute -bottom-8 right-20 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-6000"></div>
+          <div className="absolute top-0 -left-4 w-72 h-72 bg-orange-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute -bottom-8 right-20 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-6000"></div>
         </div>
       </div>
 
@@ -303,8 +303,8 @@ export default function AdminPage() {
   onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
   className={`absolute top-4 ${language === 'ar' ? 'left-4' : 'right-4'} bg-white/80 p-2 rounded-full hover:bg-white transition-all duration-200 z-50 flex items-center gap-2 shadow-md`} // Changed z-10 to z-50
 >
-  <Globe className="h-5 w-5 text-pink-500" />
-  <span className="text-sm font-medium text-pink-500">
+  <Globe className="h-5 w-5 text-orange-500" />
+  <span className="text-sm font-medium text-orange-500">
     {t.switchLanguage}
   </span>
 </button>
@@ -319,7 +319,7 @@ export default function AdminPage() {
                   onClick={() => setActiveTab('dashboard')}
                   className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
                     activeTab === 'dashboard'
-                      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
                       : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
                   }`}
                 >
@@ -330,7 +330,7 @@ export default function AdminPage() {
                   onClick={() => setActiveTab('children')}
                   className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
                     activeTab === 'children'
-                      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
                       : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
                   }`}
                 >
@@ -341,7 +341,7 @@ export default function AdminPage() {
                   onClick={() => setActiveTab('parents')}
                   className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
                     activeTab === 'parents'
-                      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
                       : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
                   }`}
                 >
@@ -352,7 +352,7 @@ export default function AdminPage() {
                   onClick={() => setActiveTab('attendance')}
                   className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
                     activeTab === 'attendance'
-                      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
                       : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
                   }`}
                 >
@@ -363,7 +363,7 @@ export default function AdminPage() {
                 onClick={() => setActiveTab('pickup')}
                 className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
                   activeTab === 'pickup'
-                    ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
                     : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
                 }`}
               >
@@ -375,7 +375,7 @@ export default function AdminPage() {
   onClick={() => setActiveTab('payments')}
   className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
     activeTab === 'payments'
-      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
       : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
   }`}
 >
@@ -388,7 +388,7 @@ export default function AdminPage() {
   onClick={() => setActiveTab('profit')}
   className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
     activeTab === 'profit'
-      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
       : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
   }`}
 >
@@ -401,7 +401,7 @@ export default function AdminPage() {
   onClick={() => setActiveTab('qrcodes')}
   className={`px-6 py-3 rounded-xl transition-all duration-200 flex items-center gap-2 font-comic transform hover:scale-105 ${
     activeTab === 'qrcodes'
-      ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-lg'
+      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
       : 'bg-white/80 hover:bg-white text-gray-700 border-2 border-pink-200'
   }`}
 >

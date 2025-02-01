@@ -96,35 +96,83 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ language, profitData }) =
   const [showCloseAlert, setShowCloseAlert] = React.useState(false);
   const [closedMonths, setClosedMonths] = React.useState<ClosedMonthRecord[]>([]);
   const [monthToClose, setMonthToClose] = React.useState<{ key: string; data: MonthlyData } | null>(null);
+  const [monthStatuses, setMonthStatuses] = React.useState<Map<string, boolean>>(new Map());
   const [monthlyRecords, setMonthlyRecords] = React.useState<Array<{
     year: number;
     month: number;
     isClosed: boolean;
   }>>([]);
 
-  // Fetch monthly records on component mount
-  React.useEffect(() => {
-    const fetchMonthlyRecords = async () => {
-      try {
-        const response = await fetch('/api/admin/financial/monthly-records');
-        if (!response.ok) throw new Error('Failed to fetch records');
-        const data = await response.json();
-        
-        // Transform the data to match our expected format
-        if (data && Array.isArray(data)) {
-          const records = data.map(record => ({
-            year: record.year,
-            month: record.month,
-            isClosed: record.isClosed
-          }));
-          setMonthlyRecords(records);
+  const fetchMonthStatus = async (monthKey: string) => {
+    const [year, month] = monthKey.split('-').map(Number);
+    
+    try {
+      const response = await fetch('/api/admin/financial/monthly-records', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         }
-      } catch (error) {
-        console.error('Error fetching monthly records:', error);
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch status');
+      const data = await response.json();
+      
+      // Find the record for this month
+      const record = data.find((r: any) => r.year === year && r.month === month);
+      if (record) {
+        // Update the status in our Map
+        setMonthStatuses(prev => {
+          const newMap = new Map(prev);
+          newMap.set(monthKey, record.isClosed);
+          return newMap;
+        });
+        return record.isClosed;
       }
-    };
+      return false;
+    } catch (error) {
+      console.error('Error fetching month status:', error);
+      return false;
+    }
+  };
 
+  const statusRef = React.useRef(new Map<string, boolean>());
+
+  // Fetch monthly records on component mount
+  const fetchMonthlyRecords = async () => {
+    try {
+      const response = await fetch('/api/admin/financial/monthly-records', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch records');
+      const data = await response.json();
+      
+      console.log('Fetched monthly records:', data);
+      
+      if (data && Array.isArray(data)) {
+        setMonthlyRecords(data.map(record => ({
+          year: record.year,
+          month: record.month,
+          isClosed: record.isClosed
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching monthly records:', error);
+    }
+  };
+
+  // Initial fetch
+  React.useEffect(() => {
     fetchMonthlyRecords();
+  }, []);
+
+  // Function to force UI update
+  const forceUpdate = React.useCallback(() => {
+    setMonthlyRecords(prev => [...prev]);
   }, []);
 
   React.useEffect(() => {
@@ -142,6 +190,8 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ language, profitData }) =
     fetchClosedMonths();
   }, []);
 
+  
+
   // Debug logging
   React.useEffect(() => {
     console.log('-------DEBUG MONTHLY REPORT-------');
@@ -151,14 +201,16 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ language, profitData }) =
     console.log('------------------------------');
   }, [profitData, monthlyRecords]);
 
-  const isMonthClosed = (monthKey: string) => {
-    const [year, month] = monthKey.split('-').map(Number);
-    return monthlyRecords.some(
-      record => record.year === year && 
-                record.month === month && 
-                record.isClosed
-    );
-  };
+  const isMonthClosed = React.useCallback(async (monthKey: string): Promise<boolean> => {
+    const status = monthStatuses.get(monthKey);
+    if (status !== undefined) {
+      return status;
+    }
+    // If we don't have the status cached, fetch it
+    return await fetchMonthStatus(monthKey);
+  }, [monthStatuses]);
+  
+  
 
 
   const t = {
@@ -276,6 +328,8 @@ const monthlyData = React.useMemo(() => {
   // First, process closed months
   closedMonths.forEach(record => {
     const monthKey = `${record.year}-${String(record.month).padStart(2, '0')}`;
+    console.log('Processing closed month:', monthKey);
+    
     data[monthKey] = {
       totalIncome: {
         daily: 0,
@@ -287,14 +341,14 @@ const monthlyData = React.useMemo(() => {
       totalExpenses: record.totalExpenses,
       netProfit: record.netProfit,
       expenses: record.expenseRecords.map(e => ({
-        id: 'archived',
+        id: `archived-${e.expenseDate}`,
         amount: e.amount,
         description: e.description,
-        type: e.expenseType as ExpenseType, // Cast to match your schema type
+        type: e.expenseType as ExpenseType,
         createdAt: e.expenseDate
       })),
       installments: record.paymentRecords.map(p => ({
-        id: 'archived',
+        id: `archived-${p.paymentDate}`,
         amount: p.amount,
         childName: p.childName,
         dueDate: p.paymentDate,
@@ -306,6 +360,7 @@ const monthlyData = React.useMemo(() => {
     };
   });
 
+  // Process current data for open months
   const processCurrentMonth = (monthKey: string) => {
     // Skip if this month is already processed as closed
     if (data[monthKey]?.isClosed) return;
@@ -328,36 +383,7 @@ const monthlyData = React.useMemo(() => {
     }
   };
 
-  // Initialize month data structure
-  const initializeMonthData = (monthKey: string, isClosed = false) => {
-    if (!data[monthKey]) {
-      data[monthKey] = {
-        totalIncome: {
-          daily: 0,
-          monthly: 0,
-          yearly: 0,
-          installments: 0,
-          total: 0
-        },
-        totalExpenses: 0,
-        netProfit: 0,
-        expenses: [],
-        installments: [],
-        isClosed: isClosed
-      };
-    }
-  };
-
-  if (profitData.monthlyRecords) {
-    profitData.monthlyRecords.forEach(record => {
-      const monthKey = `${record.year}-${String(record.month).padStart(2, '0')}`;
-      initializeMonthData(monthKey, record.isClosed);
-    });
-  }
-
-  
-
-  // Process installments with null check
+  // Process installments
   if (profitData.installments) {
     profitData.installments.forEach(installment => {
       const monthKey = processDate(installment.dueDate);
@@ -372,7 +398,7 @@ const monthlyData = React.useMemo(() => {
     });
   }
 
-  // Process expenses with null check
+  // Process expenses
   if (profitData.expenses) {
     profitData.expenses.forEach(expense => {
       const monthKey = processDate(expense.createdAt);
@@ -391,30 +417,32 @@ const monthlyData = React.useMemo(() => {
     }
   });
 
-
-  // If no data exists, create at least one month
+  // If no data exists, create current month
   if (Object.keys(data).length === 0) {
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    initializeMonthData(currentMonth);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    processCurrentMonth(currentMonth);
   }
 
-  // Debug log
-  console.log('Monthly data processed:', {
-    months: Object.keys(data),
-    totalMonths: Object.keys(data).length,
-    sampleMonth: data[Object.keys(data)[0]]
-  });
-
+  // Update isClosed status based on monthlyRecords
   Object.keys(data).forEach(monthKey => {
     const [year, month] = monthKey.split('-').map(Number);
-    const record = profitData.monthlyRecords?.find(r => 
+    const record = monthlyRecords.find(r => 
       r.year === year && r.month === month
     );
-    data[monthKey].isClosed = record?.isClosed || false;
+    if (record) {
+      data[monthKey].isClosed = record.isClosed;
+    }
+  });
+
+  console.log('Processed monthly data:', {
+    totalMonths: Object.keys(data).length,
+    months: Object.keys(data),
+    sample: data[Object.keys(data)[0]]
   });
 
   return data;
-}, [profitData, closedMonths]);
+}, [profitData, closedMonths, monthlyRecords]);
 
 const renderIncomeBreakdown = (monthData: MonthlyData) => (
   <div className="space-y-6">
@@ -518,65 +546,97 @@ const renderIncomeBreakdown = (monthData: MonthlyData) => (
   );
 
 
-  const handleToggleMonthDialog = (monthKey: string, data: MonthlyData) => {
-    console.log('Opening dialog for month:', monthKey);
-    const [year, month] = monthKey.split('-').map(Number);
-    const currentStatus = isMonthClosed(monthKey);
+  const handleToggleMonthDialog = async (monthKey: string, data: MonthlyData) => {
+    const currentStatus = await isMonthClosed(monthKey);
+    console.log('Opening dialog for month:', { monthKey, currentStatus });
     
     setMonthToClose({ 
-      key: monthKey, 
-      data: { ...data, isClosed: currentStatus }
+      key: monthKey,
+      data: {
+        ...data,
+        isClosed: currentStatus
+      }
     });
     setShowCloseAlert(true);
   };
+  
 
   const confirmToggleMonth = async () => {
     if (!monthToClose) return;
-
+  
     const [year, month] = monthToClose.key.split('-').map(Number);
-    const isClosed = isMonthClosed(monthToClose.key);
-
+    const currentStatus = await isMonthClosed(monthToClose.key);
+  
     try {
-      const endpoint = isClosed
+      const endpoint = currentStatus
         ? '/api/admin/financial/reopen-month'
         : '/api/admin/financial/close-month';
-
+  
+      console.log('Making request to:', endpoint);
+  
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month, year }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({ month, year })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update month status');
-      }
-
+  
       const result = await response.json();
-      console.log('Toggle month response:', result);
-
-      // Close the dialog
-      setShowCloseAlert(false);
-
-      // Update the monthly records
-      if (isClosed) {
-        setMonthlyRecords(prev => prev.filter(
-          record => !(record.year === year && record.month === month)
-        ));
-      } else {
-        setMonthlyRecords(prev => [...prev, { year, month, isClosed: true }]);
+      console.log('Toggle result:', result);
+  
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to ${currentStatus ? 'reopen' : 'close'} month`);
       }
-
-      // Refresh the page to get updated data
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to toggle month status:', error);
+  
+      // Update status immediately
+      setMonthStatuses(prev => {
+        const newMap = new Map(prev);
+        newMap.set(monthToClose.key, !currentStatus);
+        return newMap;
+      });
+  
+      // Reset dialog state
+      setShowCloseAlert(false);
+      setMonthToClose(null);
+  
+      // Show success message
       alert(language === 'en' 
-        ? `Failed to ${isClosed ? 'reopen' : 'close'} month: ${error.message}`
-        : `فشل في ${isClosed ? 'إعادة فتح' : 'إغلاق'} الشهر: ${error.message}`
+        ? `Month successfully ${currentStatus ? 'reopened' : 'closed'}`
+        : `تم ${currentStatus ? 'إعادة فتح' : 'إغلاق'} الشهر بنجاح`
       );
+  
+      // Fetch fresh data
+      await fetchMonthlyRecords();
+      await fetchMonthStatus(monthToClose.key);
+  
+    } catch (error) {
+      console.error('Failed to toggle month:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update month status');
+      setShowCloseAlert(false);
+      setMonthToClose(null);
+      await fetchMonthStatus(monthToClose.key);
     }
   };
+
+
+
+  
+  React.useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (!showCloseAlert) {
+        fetchMonthlyRecords();
+      }
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [showCloseAlert]);
+
+  React.useEffect(() => {
+    fetchMonthlyRecords();
+  }, []);
 
   const confirmCloseMonth = async () => {
     if (!monthToClose) return;
@@ -764,146 +824,148 @@ const renderIncomeBreakdown = (monthData: MonthlyData) => (
       printWindow.print();
     }, 250);
   };
-
+        
   return (
     <div className="space-y-4">
-      {Object.entries(monthlyData).reverse().map(([monthKey, data]) => (
-        <Card key={monthKey} className="border-2 border-pink-200 hover:border-pink-300 transition-all duration-200">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-                <CardTitle className="flex items-center gap-2">
-                  {new Date(monthKey + '-01').toLocaleDateString(
-                    language === 'ar' ? 'ar-IQ' : 'en-US',
-                    { month: 'long', year: 'numeric' }
-                  )}
-                  <span 
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      isMonthClosed(monthKey)
-                        ? 'bg-red-100 text-red-800' 
-                        : 'bg-green-100 text-green-800'
+{Object.entries(monthlyData).reverse().map(([monthKey, data]) => {
+  const closed = monthStatuses.get(monthKey) ?? false;
+        
+  return (
+    <Card key={monthKey} className="border-2 border-pink-200 hover:border-pink-300 transition-all duration-200">
+      <CardHeader>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2">
+                    {new Date(monthKey + '-01').toLocaleDateString(
+                      language === 'ar' ? 'ar-IQ' : 'en-US',
+                      { month: 'long', year: 'numeric' }
+                    )}
+                    <div className="flex items-center gap-1">
+                      <div 
+                        className={`h-2 w-2 rounded-full transition-colors duration-300 ${
+                          closed ? 'bg-red-500' : 'bg-green-500'
+                        }`}
+                      />
+                      <span className="text-xs text-gray-500">
+                        {closed
+                          ? (language === 'en' ? 'Closed' : 'مغلق')
+                          : (language === 'en' ? 'Open' : 'مفتوح')
+                        }
+                      </span>
+                    </div>
+                  </CardTitle>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => handlePrintMonth(monthKey, data)}
+                    variant="outline"
+                    size="sm"
+                    className="bg-white"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    {t.printReport}
+                  </Button>
+                  <Button
+                    onClick={() => handleToggleMonthDialog(monthKey, data)}
+                    variant="outline"
+                    size="sm"
+                    className={`transition-colors duration-300 ${
+                      closed ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-white hover:bg-gray-100'
                     }`}
                   >
-                    {isMonthClosed(monthKey)
-                      ? (language === 'en' ? 'Closed' : 'مغلق')
-                      : (language === 'en' ? 'Open' : 'مفتوح')
+                    <Lock className={`h-4 w-4 ${closed ? 'text-yellow-700' : 'text-gray-700'}`} />
+                  </Button>
+                  <Button
+                    onClick={() => setSelectedMonth(selectedMonth === monthKey ? null : monthKey)}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    {selectedMonth === monthKey ? 
+                      <ChevronUp className="h-4 w-4" /> : 
+                      <ChevronDown className="h-4 w-4" />
                     }
-                  </span>
-                </CardTitle>
+                  </Button>
+                </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => handlePrintMonth(monthKey, data)}
-                  variant="outline"
-                  size="sm"
-                  className="bg-white"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  {t.printReport}
-                </Button>
-                {/* Add Close Month Button */}
-                <Button
-  onClick={() => handleToggleMonthDialog(monthKey, data)}
-  variant="outline"
-  size="sm"
-  className={`${data.isClosed ? 'bg-yellow-100' : 'bg-white'}`}
->
-  <Lock className="h-4 w-4" />
-</Button>
-
-<Button
-  onClick={() => setSelectedMonth(
-    selectedMonth === monthKey ? null : monthKey
-  )}
-  variant="ghost"
-  size="sm"
->
-  {selectedMonth === monthKey ? 
-    <ChevronUp className="h-4 w-4" /> : 
-    <ChevronDown className="h-4 w-4" />
-  }
-</Button>
+  
+              <div className="grid grid-cols-3 gap-4 mt-4">
+                <div>
+                  <p className="text-sm text-gray-500">{t.totalIncome}</p>
+                  <p className="text-lg font-semibold text-green-600">
+                    {formatCurrency(data.totalIncome.total)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">{t.totalExpenses}</p>
+                  <p className="text-lg font-semibold text-red-600">
+                    {formatCurrency(data.totalExpenses)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">{t.netProfit}</p>
+                  <p className="text-lg font-semibold text-blue-600">
+                    {formatCurrency(data.netProfit)}
+                  </p>
+                </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div>
-                <p className="text-sm text-gray-500">{t.totalIncome}</p>
-                <p className="text-lg font-semibold text-green-600">
-                  {formatCurrency(data.totalIncome.total)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">{t.totalExpenses}</p>
-                <p className="text-lg font-semibold text-red-600">
-                  {formatCurrency(data.totalExpenses)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">{t.netProfit}</p>
-                <p className="text-lg font-semibold text-blue-600">
-                  {formatCurrency(data.netProfit)}
-                </p>
-              </div>
-            </div>
-          </CardHeader>
-
-          {selectedMonth === monthKey && (
-            <CardContent>
-              <div className="flex gap-4 mb-6">
-                <Button
-                  variant={activeTab === 'income' ? 'default' : 'outline'}
-                  onClick={() => setActiveTab('income')}
-                >
-                  {t.totalIncome}
-                </Button>
-                <Button
-                  variant={activeTab === 'expenses' ? 'default' : 'outline'}
-                  onClick={() => setActiveTab('expenses')}
-                >
-                  {t.totalExpenses}
-                </Button>
-              </div>
-
-              {activeTab === 'income' ? (
-                renderIncomeBreakdown(data)
-              ) : (
-                renderExpensesBreakdown(data)
-              )}
-            </CardContent>
-          )}
-        </Card>
-      ))}
-
-<AlertDialog.AlertDialog open={showCloseAlert} onOpenChange={setShowCloseAlert}>
-        <AlertDialog.AlertDialogContent>
-          <AlertDialog.AlertDialogHeader>
-            <AlertDialog.AlertDialogTitle>
-              {monthToClose?.data.isClosed
-                ? t.reopenConfirmTitle
-                : t.closeConfirmTitle}
-            </AlertDialog.AlertDialogTitle>
-            <AlertDialog.AlertDialogDescription>
-              {monthToClose?.data.isClosed
-                ? t.reopenConfirmMessage
-                : t.closeConfirmMessage}
-            </AlertDialog.AlertDialogDescription>
-          </AlertDialog.AlertDialogHeader>
-          <AlertDialog.AlertDialogFooter>
-            <AlertDialog.AlertDialogCancel>
-              {language === 'en' ? 'Cancel' : 'إلغاء'}
-            </AlertDialog.AlertDialogCancel>
-            <AlertDialog.AlertDialogAction onClick={confirmToggleMonth}>
-              {monthToClose?.data.isClosed
-                ? (language === 'en' ? 'Reopen Month' : 'إعادة فتح الشهر')
-                : (language === 'en' ? 'Close Month' : 'إغلاق الشهر')}
-            </AlertDialog.AlertDialogAction>
-          </AlertDialog.AlertDialogFooter>
-        </AlertDialog.AlertDialogContent>
-      </AlertDialog.AlertDialog>
+            </CardHeader>
+  
+            {selectedMonth === monthKey && (
+              <CardContent>
+                <div className="flex gap-4 mb-6">
+                  <Button
+                    variant={activeTab === 'income' ? 'default' : 'outline'}
+                    onClick={() => setActiveTab('income')}
+                  >
+                    {t.totalIncome}
+                  </Button>
+                  <Button
+                    variant={activeTab === 'expenses' ? 'default' : 'outline'}
+                    onClick={() => setActiveTab('expenses')}
+                  >
+                    {t.totalExpenses}
+                  </Button>
+                </div>
+  
+                {activeTab === 'income' ? (
+                  renderIncomeBreakdown(data)
+                ) : (
+                  renderExpensesBreakdown(data)
+                )}
+              </CardContent>
+            )}
+          </Card>
+        );
+      })}
+  
+  <AlertDialog.AlertDialog open={showCloseAlert} onOpenChange={setShowCloseAlert}>
+  <AlertDialog.AlertDialogContent>
+    <AlertDialog.AlertDialogHeader>
+      <AlertDialog.AlertDialogTitle>
+        {monthToClose && monthStatuses.get(monthToClose.key)
+          ? t.reopenConfirmTitle 
+          : t.closeConfirmTitle}
+      </AlertDialog.AlertDialogTitle>
+      <AlertDialog.AlertDialogDescription>
+        {monthToClose && monthStatuses.get(monthToClose.key)
+          ? t.reopenConfirmMessage 
+          : t.closeConfirmMessage}
+      </AlertDialog.AlertDialogDescription>
+    </AlertDialog.AlertDialogHeader>
+    <AlertDialog.AlertDialogFooter>
+      <AlertDialog.AlertDialogCancel>
+        {language === 'en' ? 'Cancel' : 'إلغاء'}
+      </AlertDialog.AlertDialogCancel>
+      <AlertDialog.AlertDialogAction onClick={confirmToggleMonth}>
+        {monthToClose && monthStatuses.get(monthToClose.key)
+          ? (language === 'en' ? 'Reopen Month' : 'إعادة فتح الشهر')
+          : (language === 'en' ? 'Close Month' : 'إغلاق الشهر')}
+      </AlertDialog.AlertDialogAction>
+    </AlertDialog.AlertDialogFooter>
+  </AlertDialog.AlertDialogContent>
+</AlertDialog.AlertDialog>
     </div>
   );
-};
-
+}
 export default MonthlyReport;

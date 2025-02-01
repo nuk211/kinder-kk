@@ -35,7 +35,7 @@ async function sendStatusEmail(
       html: `
         <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; text-align: right;">
         <!-- Kindergarten Logo -->
-        <img src="/assets/Logo.png" alt="Kindergarten Logo" style="width: 150px; margin-bottom: 20px;">
+        <img src="https://www.sunwayiq.com/_next/image?url=%2Fassets%2FLogo.png&w=48&q=75" alt="Kindergarten Logo" style="width: 150px; margin-bottom: 20px;">
   
         <h1 style="color: #6b46c1;">تحديث الحالة</h1>
           <p style="font-size: 16px; line-height: 1.5;">
