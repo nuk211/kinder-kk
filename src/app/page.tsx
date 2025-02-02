@@ -64,7 +64,7 @@ export default function Home() {
       {/* Language Switcher */}
       <button
         onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-        className={`absolute top-4 ${language === 'ar' ? 'left-4' : 'right-4'} bg-white/80 p-2 rounded-full hover:bg-white transition-all duration-200 z-50 flex items-center gap-2 shadow-md`}
+        className={`absolute top-20 ${language === 'ar' ? 'left-4' : 'right-4'} bg-white/80 p-2 rounded-full hover:bg-white transition-all duration-200 z-50 flex items-center gap-2 shadow-md`}
       >
         <Globe className="h-5 w-5 text-orange-500" />
         <span className="text-sm font-medium text-orange-500">
